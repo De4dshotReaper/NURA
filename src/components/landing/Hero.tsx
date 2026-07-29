@@ -5,18 +5,24 @@ import { FloatingPreviewCards } from './FloatingPreviewCards';
 export const Hero: React.FC = () => {
   return (
     <section className="relative min-h-screen flex items-center pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-grain">
-      {/* Background: Extremely subtle premium background with glows and oversized circles */}
-      <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
-        {/* Soft radial blue/teal glow */}
-        <div className="absolute top-1/4 left-1/4 w-[800px] h-[800px] bg-blue-400/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-teal-400/5 rounded-full blur-[100px]" />
+      {/* Background Atmosphere - 5 Subtle Visual Layers */}
+      <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden bg-vignette">
         
-        {/* Faint oversized gradient circles for depth */}
-        <div className="absolute -top-[20%] -right-[10%] w-[1000px] h-[1000px] border border-blue-500/5 rounded-full" />
-        <div className="absolute top-[40%] -left-[15%] w-[800px] h-[800px] border border-teal-500/5 rounded-full" />
+        {/* Layer 1: Large radial gradient behind Hero (70% viewport, soft blue / soft cyan / very light emerald fading to white) */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140vw] h-[140vh] bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.06)_0%,rgba(20,184,166,0.04)_35%,rgba(52,211,153,0.02)_55%,transparent_70%)] blur-[90px]" />
+
+        {/* Layer 2: Oversized blurred gradient orbs (500-900px, 5-10% opacity, heavy blur, off-screen, animated with slow drifting light) */}
+        {/* Top Left Orb */}
+        <div className="absolute -top-32 -left-32 w-[700px] h-[700px] bg-blue-400/8 rounded-full blur-[140px] animate-drift-1" />
         
-        {/* Central subtle glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle,rgba(59,130,246,0.03)_0%,rgba(20,184,166,0.02)_50%,transparent_100%)] blur-3xl" />
+        {/* Top Right Orb */}
+        <div className="absolute -top-40 -right-32 w-[850px] h-[850px] bg-teal-400/7 rounded-full blur-[160px] animate-drift-2" />
+        
+        {/* Bottom Right Orb */}
+        <div className="absolute -bottom-48 right-10 w-[800px] h-[800px] bg-emerald-400/6 rounded-full blur-[150px] animate-drift-3" />
+
+        {/* Layer 3: Ultra-subtle ambient light effect (frosted glass daylight richness) */}
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.4)_0%,rgba(255,255,255,0)_50%,rgba(240,253,250,0.3)_100%)] backdrop-blur-[1px]" />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 md:px-12 w-full">
