@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ArrowRight } from 'lucide-react';
 
-export const LandingNavbar: React.FC = () => {
+interface LandingNavbarProps {
+  onStartJourney: () => void;
+}
+
+export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -59,22 +63,22 @@ export const LandingNavbar: React.FC = () => {
 
         {/* Right CTA Actions */}
         <div className="hidden md:flex items-center gap-5">
-          <button className="px-4 py-2 text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors duration-300 rounded-xl">
+          <button className="px-4 py-2 text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors duration-300 rounded-xl cursor-pointer">
             Sign In
           </button>
-          <a
-            href="#get-started"
-            className="inline-flex items-center justify-center px-7 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-400 gap-1.5"
+          <button
+            onClick={onStartJourney}
+            className="inline-flex items-center justify-center px-7 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-400 gap-1.5 cursor-pointer"
           >
             Start Journey
             <ArrowRight className="w-4 h-4 opacity-80" />
-          </a>
+          </button>
         </div>
 
         {/* Mobile Menu Button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 text-nuraText hover:text-primary transition-colors focus:outline-none"
+          className="md:hidden p-2 text-nuraText hover:text-primary transition-colors focus:outline-none cursor-pointer"
           aria-label="Toggle navigation menu"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -100,13 +104,15 @@ export const LandingNavbar: React.FC = () => {
             <button className="w-full py-2.5 text-center text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors">
               Sign In
             </button>
-            <a
-              href="#get-started"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-3.5 text-sm font-semibold text-white bg-primary rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 transition-all"
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onStartJourney();
+              }}
+              className="w-full text-center py-3.5 text-sm font-semibold text-white bg-primary rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 transition-all cursor-pointer"
             >
               Start Journey
-            </a>
+            </button>
           </div>
         </div>
       )}
