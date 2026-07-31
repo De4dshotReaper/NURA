@@ -3,10 +3,17 @@ import { LandingNavbar } from './components/landing/LandingNavbar';
 import { Hero } from './components/landing/Hero';
 import { OnboardingStep1 } from './components/onboarding/OnboardingStep1';
 import { SymptomEntry } from './components/onboarding/SymptomEntry';
+import { SeveritySelection } from './components/onboarding/SeveritySelection';
+import { DurationSelection } from './components/onboarding/DurationSelection';
+import { NewIllnessSummary } from './components/onboarding/NewIllnessSummary';
+import { ConsultationTransition } from './components/onboarding/ConsultationTransition';
 
 export const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'onboarding-1' | 'next-flow'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete'>('landing');
   const [journeyType, setJourneyType] = useState<'new-illness' | 'follow-up' | null>(null);
+  const [symptoms, setSymptoms] = useState<string>('');
+  const [severityScore, setSeverityScore] = useState<number | null>(null);
+  const [duration, setDuration] = useState<string | null>(null);
 
   const handleStartJourney = () => {
     setCurrentView('onboarding-1');
@@ -51,7 +58,57 @@ export const App: React.FC = () => {
       )}
 
       {currentView === 'next-flow' && journeyType === 'new-illness' && (
-        <SymptomEntry />
+        <SymptomEntry
+          onContinue={(enteredSymptoms) => {
+            setSymptoms(enteredSymptoms);
+            setCurrentView('severity-selection');
+          }}
+        />
+      )}
+
+      {currentView === 'severity-selection' && (
+        <SeveritySelection
+          onContinue={(severity) => {
+            setSeverityScore(severity);
+            setCurrentView('duration-selection');
+          }}
+        />
+      )}
+
+      {currentView === 'duration-selection' && (
+        <DurationSelection
+          symptoms={symptoms}
+          severity={severityScore}
+          onContinue={(selectedDuration) => {
+            setDuration(selectedDuration);
+            setCurrentView('new-illness-summary');
+          }}
+        />
+      )}
+
+      {currentView === 'new-illness-summary' && (
+        <NewIllnessSummary
+          symptoms={symptoms}
+          severity={severityScore}
+          duration={duration || ''}
+          onContinue={() => setCurrentView('consultation-transition')}
+        />
+      )}
+
+      {currentView === 'consultation-transition' && (
+        <ConsultationTransition
+          symptoms={symptoms}
+          severity={severityScore}
+          duration={duration || ''}
+          onComplete={() => {
+            setCurrentView('landing');
+            setJourneyType(null);
+            setSymptoms('');
+            setSeverityScore(null);
+            setDuration(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
       )}
 
       {currentView === 'next-flow' && journeyType === 'follow-up' && (

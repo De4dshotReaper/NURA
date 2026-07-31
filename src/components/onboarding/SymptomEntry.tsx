@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
 
 interface SymptomEntryProps {
-  onContinue?: () => void;
+  onContinue?: (symptoms: string) => void;
 }
 
 export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
@@ -103,7 +103,7 @@ export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
           <Button
             variant="primary"
             size="lg"
-            onClick={onContinue}
+            onClick={() => onContinue && onContinue(value)}
             className="w-full sm:w-auto min-w-[200px] py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             Continue →
