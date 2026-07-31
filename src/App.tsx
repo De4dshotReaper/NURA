@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LandingNavbar } from './components/landing/LandingNavbar';
 import { Hero } from './components/landing/Hero';
 import { OnboardingStep1 } from './components/onboarding/OnboardingStep1';
+import { SymptomEntry } from './components/onboarding/SymptomEntry';
 
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'onboarding-1' | 'next-flow'>('landing');
@@ -49,7 +50,11 @@ export const App: React.FC = () => {
         />
       )}
 
-      {currentView === 'next-flow' && (
+      {currentView === 'next-flow' && journeyType === 'new-illness' && (
+        <SymptomEntry />
+      )}
+
+      {currentView === 'next-flow' && journeyType === 'follow-up' && (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-nuraBg">
           <div className="max-w-md space-y-6 bg-white p-8 rounded-[2rem] shadow-xl border border-gray-200/80">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
@@ -57,7 +62,7 @@ export const App: React.FC = () => {
             </div>
             <h2 className="text-2xl font-bold font-heading text-nuraText">Next Flow Prepared</h2>
             <p className="text-nuraTextSecondary">
-              Selected path: <span className="font-semibold text-primary">{journeyType === 'new-illness' ? 'New Illness (Doctor Visit Prep)' : 'Follow-up Visit (Review Consultation)'}</span>
+              Selected path: <span className="font-semibold text-primary">Follow-up Visit (Review Consultation)</span>
             </p>
             <p className="text-xs text-nuraTextSecondary opacity-80">
               Navigation structure is fully configured. The subsequent onboarding screen will be implemented next.
