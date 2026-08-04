@@ -105,7 +105,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="max-w-2xl w-full mx-auto flex flex-col items-center text-center space-y-8 z-10 overflow-y-auto max-h-screen py-6"
+            className="max-w-2xl w-full mx-auto flex flex-col items-center text-center space-y-8 z-10 py-6"
           >
             {/* Logo & Caption */}
             <div className="flex flex-col items-center space-y-3">
