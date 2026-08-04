@@ -57,7 +57,11 @@ const getFormattedDate = (): string => {
   return `${weekday}, ${day} ${month} ${year}`;
 };
 
-export const DashboardLayout: React.FC = () => {
+interface DashboardLayoutProps {
+  entryMode?: 'new' | 'follow-up';
+}
+
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'follow-up' }) => {
   const [activeItem, setActiveItem] = useState<string>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [hasAppointment, setHasAppointment] = useState<boolean>(false);
@@ -225,7 +229,7 @@ export const DashboardLayout: React.FC = () => {
               {getGreeting()}, Divyanshu.
             </motion.h1>
 
-            {/* 2. Welcome back */}
+            {/* 2. Welcome back / Contextual Subtitle */}
             <motion.p
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -236,7 +240,9 @@ export const DashboardLayout: React.FC = () => {
               }}
               className="font-sans text-lg sm:text-xl text-nuraTextSecondary font-medium"
             >
-              Welcome back.
+              {entryMode === 'new' 
+                ? "Let's prepare for your consultation." 
+                : "Welcome back. Here's everything from your previous visit."}
             </motion.p>
 
             {/* 3. Subtle Date */}

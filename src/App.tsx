@@ -44,7 +44,7 @@ export const App: React.FC = () => {
   }, []);
 
   if (currentView === 'dashboard') {
-    return <DashboardLayout />;
+    return <DashboardLayout entryMode={journeyType === 'new-illness' ? 'new' : 'follow-up'} />;
   }
 
   return (
@@ -75,7 +75,12 @@ export const App: React.FC = () => {
         <OnboardingStep1
           onComplete={(option) => {
             setJourneyType(option);
-            setCurrentView('next-flow');
+            if (option === 'follow-up') {
+              setCurrentView('dashboard');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              setCurrentView('next-flow');
+            }
           }}
         />
       )}
