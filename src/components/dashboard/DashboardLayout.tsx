@@ -15,6 +15,8 @@ import {
 import { MedicineInformationPage } from './MedicineInformationPage';
 import { LabReportExplanationPage } from './LabReportExplanationPage';
 import { HealthTimelinePage } from './HealthTimelinePage';
+import { QuestionsPage } from './QuestionsPage';
+import { AppointmentDetailsPage } from './AppointmentDetailsPage';
 
 interface NavItem {
   id: string;
@@ -202,6 +204,10 @@ export const DashboardLayout: React.FC = () => {
           <LabReportExplanationPage onBackToDashboard={() => setActiveItem('dashboard')} />
         ) : activeItem === 'health-timeline' ? (
           <HealthTimelinePage onBackToDashboard={() => setActiveItem('dashboard')} />
+        ) : activeItem === 'questions' ? (
+          <QuestionsPage onBackToDashboard={() => setActiveItem('dashboard')} />
+        ) : activeItem === 'appointment' ? (
+          <AppointmentDetailsPage onBackToDashboard={() => setActiveItem('dashboard')} />
         ) : (
           <div className="max-w-4xl mr-auto space-y-10">
           {/* Top Greeting Section */}
@@ -337,7 +343,8 @@ export const DashboardLayout: React.FC = () => {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="lg:col-span-5 bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] transition-all duration-300 flex flex-col justify-between"
+                onClick={() => setActiveItem('appointment')}
+                className="lg:col-span-5 bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] transition-all duration-300 flex flex-col justify-between cursor-pointer"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -345,7 +352,10 @@ export const DashboardLayout: React.FC = () => {
                       Upcoming Appointment
                     </h3>
                     <button
-                      onClick={() => setHasAppointment(!hasAppointment)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHasAppointment(!hasAppointment);
+                      }}
                       className="text-[11px] text-nuraTextSecondary/60 hover:text-nuraText transition-colors"
                       title="Toggle appointment state"
                     >
@@ -389,7 +399,10 @@ export const DashboardLayout: React.FC = () => {
 
                       <div className="pt-2">
                         <button
-                          onClick={() => setHasAppointment(true)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHasAppointment(true);
+                          }}
                           className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-nuraText hover:border-primary hover:text-primary transition-all duration-200 cursor-pointer inline-flex items-center gap-2 shadow-2xs"
                         >
                           <span>Add Appointment</span>
@@ -403,7 +416,10 @@ export const DashboardLayout: React.FC = () => {
                 {hasAppointment && (
                   <div className="pt-6 mt-6 border-t border-gray-100/80">
                     <button
-                      onClick={() => setHasAppointment(false)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHasAppointment(false);
+                      }}
                       className="text-xs text-nuraTextSecondary hover:text-nuraText transition-colors"
                     >
                       Reschedule or cancel appointment
