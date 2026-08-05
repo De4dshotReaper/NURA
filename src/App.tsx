@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { LandingNavbar } from './components/landing/LandingNavbar';
 import { Hero } from './components/landing/Hero';
+import { HowItWorks } from './components/landing/HowItWorks';
+import { Features } from './components/landing/Features';
+import { FAQ } from './components/landing/FAQ';
+import { PrivacyPolicy } from './components/landing/PrivacyPolicy';
 import { OnboardingStep1 } from './components/onboarding/OnboardingStep1';
 import { SymptomEntry } from './components/onboarding/SymptomEntry';
 import { SeveritySelection } from './components/onboarding/SeveritySelection';
@@ -11,7 +15,7 @@ import { FollowUpIntake } from './components/onboarding/FollowUpIntake';
 import { DashboardLayout } from './components/dashboard/DashboardLayout';
 
 export const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard'>('landing');
   const [journeyType, setJourneyType] = useState<'new-illness' | 'follow-up' | null>(null);
   const [symptoms, setSymptoms] = useState<string>('');
   const [severityScore, setSeverityScore] = useState<number | null>(null);
@@ -35,16 +39,45 @@ export const App: React.FC = () => {
           e.preventDefault();
           setCurrentView('dashboard');
           window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (href === '#privacy') {
+          e.preventDefault();
+          setCurrentView('privacy');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (href === '#' || href === '#features' || href === '#faq' || href === '#how-it-works') {
+          if (currentView !== 'landing') {
+            e.preventDefault();
+            setCurrentView('landing');
+            setTimeout(() => {
+              if (href !== '#') {
+                const el = document.querySelector(href);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }, 50);
+          }
         }
       }
     };
 
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, []);
+  }, [currentView]);
 
   if (currentView === 'dashboard') {
     return <DashboardLayout entryMode={journeyType === 'new-illness' ? 'new' : 'follow-up'} />;
+  }
+
+  if (currentView === 'privacy') {
+    return (
+      <PrivacyPolicy
+        onBackToHome={() => {
+          setCurrentView('landing');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onStartJourney={handleStartJourney}
+      />
+    );
   }
 
   return (
@@ -67,6 +100,9 @@ export const App: React.FC = () => {
           {/* Hero Section */}
           <main>
             <Hero />
+            <HowItWorks />
+            <Features />
+            <FAQ />
           </main>
         </>
       )}
