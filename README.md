@@ -1,6 +1,6 @@
 # Nura Project
 
-A new project initialized in the workspace.
+ITS A COOL HEALTHCARE COMPANION WEBSITE/FUTURE APP FOR MY CEP PROJECT LOL. I HATE MY LIFE
 
 ## Getting Started
 
