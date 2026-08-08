@@ -3,9 +3,10 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 
 interface LandingNavbarProps {
   onStartJourney: () => void;
+  onSignIn?: () => void;
 }
 
-export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney }) => {
+export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, onSignIn }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -63,9 +64,18 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney }) 
 
         {/* Right CTA Actions */}
         <div className="hidden md:flex items-center gap-5">
-          <button className="px-4 py-2 text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors duration-300 rounded-xl cursor-pointer">
+          <a
+            href="#login"
+            onClick={(e) => {
+              if (onSignIn) {
+                e.preventDefault();
+                onSignIn();
+              }
+            }}
+            className="px-4 py-2 text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors duration-300 rounded-xl cursor-pointer inline-flex items-center"
+          >
             Sign In
-          </button>
+          </a>
           <button
             onClick={onStartJourney}
             className="inline-flex items-center justify-center px-7 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-400 gap-1.5 cursor-pointer"
@@ -101,9 +111,19 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney }) 
             ))}
           </div>
           <div className="pt-4 border-t border-gray-100 flex flex-col gap-3">
-            <button className="w-full py-2.5 text-center text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors">
+            <a
+              href="#login"
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                if (onSignIn) {
+                  e.preventDefault();
+                  onSignIn();
+                }
+              }}
+              className="w-full py-2.5 text-center text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors"
+            >
               Sign In
-            </button>
+            </a>
             <button
               onClick={() => {
                 setMobileMenuOpen(false);

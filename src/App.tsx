@@ -13,9 +13,10 @@ import { NewIllnessSummary } from './components/onboarding/NewIllnessSummary';
 import { ConsultationTransition } from './components/onboarding/ConsultationTransition';
 import { FollowUpIntake } from './components/onboarding/FollowUpIntake';
 import { DashboardLayout } from './components/dashboard/DashboardLayout';
+import { LoginPage } from './components/auth/LoginPage';
 
 export const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'login' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard'>('landing');
   const [journeyType, setJourneyType] = useState<'new-illness' | 'follow-up' | null>(null);
   const [symptoms, setSymptoms] = useState<string>('');
   const [severityScore, setSeverityScore] = useState<number | null>(null);
@@ -42,6 +43,10 @@ export const App: React.FC = () => {
         } else if (href === '#privacy') {
           e.preventDefault();
           setCurrentView('privacy');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (href === '#login' || href === '#signin') {
+          e.preventDefault();
+          setCurrentView('login');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (href === '#' || href === '#features' || href === '#faq' || href === '#how-it-works') {
           if (currentView !== 'landing') {
@@ -80,6 +85,22 @@ export const App: React.FC = () => {
     );
   }
 
+  if (currentView === 'login') {
+    return (
+      <LoginPage
+        onBackToHome={() => {
+          setCurrentView('landing');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onLoginSuccess={() => {
+          setCurrentView('dashboard');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onStartJourney={handleStartJourney}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white text-nuraText font-sans relative selection:bg-primary/10 selection:text-primary overflow-x-hidden">
       {/* Animated Ambient Light Background Effect (Apple Health / OS style) */}
@@ -95,7 +116,13 @@ export const App: React.FC = () => {
       {currentView === 'landing' && (
         <>
           {/* Floating Landing Navbar */}
-          <LandingNavbar onStartJourney={handleStartJourney} />
+          <LandingNavbar
+            onStartJourney={handleStartJourney}
+            onSignIn={() => {
+              setCurrentView('login');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
 
           {/* Hero Section */}
           <main>
