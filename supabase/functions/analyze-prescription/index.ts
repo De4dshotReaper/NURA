@@ -65,7 +65,7 @@ serve(async (req) => {
     const base64Image = btoa(binaryString)
 
     // Call Gemini API (gemin-2.5-flash or gemini-1.5-flash)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey}`
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${geminiApiKey}`
 
     const promptText = `You are a medical prescription text extractor. Analyze the attached prescription image and extract ONLY the information clearly visible in the prescription. 
 Do not invent missing medicine names, dosages, frequencies, or instructions. 
