@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pill, FileText, CheckCircle2, Clock, Calendar, Sun, Shield, ArrowLeft } from 'lucide-react';
+import { Pill, FileText, CheckCircle2, Clock, Calendar, Sun, Shield, ArrowLeft, AlertCircle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { PrescriptionSummaryPage } from './PrescriptionSummaryPage';
 
 interface PrescriptionItem {
@@ -8,6 +9,19 @@ interface PrescriptionItem {
   date: string;
   fileType: 'PDF' | 'JPG' | 'PNG';
   title: string;
+}
+
+interface Medicine {
+  name: string | null;
+  dosage: string | null;
+  frequency: string | null;
+  instructions: string | null;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+interface PrescriptionResponse {
+  medicines: Medicine[];
+  rawText: string | null;
 }
 
 interface MedicineInformationPageProps {
@@ -24,22 +38,129 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
   ]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [activeSummaryRx, setActiveSummaryRx] = useState<PrescriptionItem | null>(null);
   const [hasUploaded, setHasUploaded] = useState(true);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [extractedData, setExtractedData] = useState<PrescriptionResponse | null>(null);
+  const [pdfMessage, setPdfMessage] = useState<string | null>(null);
 
-  const handleSimulateUpload = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (file: File) => {
+    const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (file.size > MAX_SIZE) {
+      setErrorMessage('File size exceeds the 10 MB limit. Please select a smaller file.');
+      setShowSuccess(false);
+      return;
+    }
+
+    const fileName = file.name.toLowerCase();
+    const mimeType = file.type.toLowerCase();
+    let detectedType: 'PDF' | 'JPG' | 'PNG' | null = null;
+
+    if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
+      detectedType = 'PDF';
+    } else if (
+      mimeType === 'image/jpeg' ||
+      mimeType === 'image/jpg' ||
+      fileName.endsWith('.jpg') ||
+      fileName.endsWith('.jpeg')
+    ) {
+      detectedType = 'JPG';
+    } else if (mimeType === 'image/png' || fileName.endsWith('.png')) {
+      detectedType = 'PNG';
+    }
+
+    if (!detectedType) {
+      setErrorMessage('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
+      setShowSuccess(false);
+      return;
+    }
+
+    setErrorMessage(null);
+    setPdfMessage(null);
+    setExtractedData(null);
+    setSelectedFile(file);
+
     const newRx: PrescriptionItem = {
       id: Date.now().toString(),
       date: new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
-      fileType: 'PDF',
-      title: `Prescription_${Date.now().toString().slice(-4)}.pdf`,
+      fileType: detectedType,
+      title: file.name,
     };
-    setPrescriptions([newRx, ...prescriptions]);
+
+    setPrescriptions((prev) => [newRx, ...prev]);
     setHasUploaded(true);
     setShowSuccess(true);
     setTimeout(() => {
       setShowSuccess(false);
     }, 2000);
+
+    if (detectedType === 'PDF') {
+      setPdfMessage('PDF text extraction has not been implemented yet.');
+    } else {
+      setOcrLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const { data, error } = await supabase.functions.invoke('analyze-prescription', {
+          body: formData,
+        });
+
+        if (error) {
+          console.error('Supabase Error Object:', error);
+          console.error('Error keys:', Object.keys(error));
+          // @ts-ignore
+          console.error('Error name:', error.name, 'message:', error.message, 'context:', error.context);
+
+          let errorMsg = error.message || 'Failed to call analyze-prescription function.';
+          // @ts-ignore
+          if (error.context) {
+            // @ts-ignore
+            if (error.context instanceof Response) {
+              // @ts-ignore
+              const body = await error.context.clone().text();
+              console.error('Context Body:', body);
+              errorMsg = `Error: ${errorMsg}. Body: ${body}`;
+            } else {
+              try {
+                // @ts-ignore
+                const context = typeof error.context === 'string' ? JSON.parse(error.context) : error.context;
+                errorMsg = `Error: ${context.error || errorMsg}. Upstream: ${context.upstreamStatus} ${context.upstreamStatusText}. Body: ${JSON.stringify(context.upstreamBody)}`;
+              } catch (e) {
+                // Fallback to original message if parsing fails
+              }
+            }
+          }
+          throw new Error(errorMsg);
+        }
+
+        if (data && data.error) {
+          throw new Error(data.error);
+        }
+
+        setExtractedData(data as PrescriptionResponse);
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to analyze prescription image. Please try again.');
+      } finally {
+        setOcrLoading(false);
+      }
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleUploadAreaClick = () => {
+    fileInputRef.current?.click();
   };
 
   if (activeSummaryRx) {
@@ -86,6 +207,27 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         </p>
       </div>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+        onChange={handleFileInputChange}
+        className="hidden"
+      />
+
+      {/* ERROR TOAST NOTIFICATION */}
+      {errorMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="bg-red-50 border border-red-200/80 p-4 rounded-2xl flex items-center gap-3 text-red-800"
+        >
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          <span className="text-sm font-semibold">{errorMessage}</span>
+        </motion.div>
+      )}
+
       {/* SUCCESS TOAST NOTIFICATION */}
       {showSuccess && (
         <motion.div
@@ -105,8 +247,15 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         transition={{ duration: 0.2 }}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleSimulateUpload(); }}
-        onClick={handleSimulateUpload}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) {
+            handleFileSelect(file);
+          }
+        }}
+        onClick={handleUploadAreaClick}
         className={`bg-white rounded-[1.75rem] p-10 sm:p-14 border-2 border-dashed transition-all duration-250 cursor-pointer flex flex-col items-center justify-center text-center shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] ${
           isDragging ? 'border-primary bg-blue-50/30' : 'border-gray-200/80 hover:border-gray-300 bg-white'
         }`}
@@ -130,6 +279,53 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
           <span>Maximum size: 10 MB</span>
         </div>
       </motion.div>
+
+      {/* OCR LOADING STATE */}
+      {ocrLoading && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="bg-blue-50 border border-blue-200/80 p-4 rounded-2xl flex items-center gap-3 text-blue-800"
+        >
+          <Clock className="w-5 h-5 text-blue-600 animate-spin shrink-0" />
+          <span className="text-sm font-semibold">Reading prescription...</span>
+        </motion.div>
+      )}
+
+      {/* PDF MESSAGE */}
+      {pdfMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl flex items-center gap-3 text-amber-800"
+        >
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          <span className="text-sm font-semibold">{pdfMessage}</span>
+        </motion.div>
+      )}
+
+      {/* EXTRACTED STRUCTURED RESPONSE (TEMPORARY DEBUG DISPLAY) */}
+      {extractedData && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading font-bold text-base text-nuraText">
+              Extracted Structured Response (Gemini Verification)
+            </h3>
+            <span className="text-xs font-semibold text-nuraTextSecondary">
+              JSON Output
+            </span>
+          </div>
+          <pre className="p-4 bg-gray-50 rounded-xl text-xs font-mono text-nuraText whitespace-pre-wrap max-h-80 overflow-y-auto">
+            {JSON.stringify(extractedData, null, 2)}
+          </pre>
+        </motion.div>
+      )}
 
       {/* NEW: PRESCRIPTION SUMMARY SECTION (INSERTED BETWEEN UPLOAD & MEDICINE ACCORDION) */}
       <motion.div
@@ -170,7 +366,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                     Medicines Detected
                   </div>
                   <div className="font-heading font-bold text-lg sm:text-xl text-nuraText">
-                    3 Medicines
+                    {extractedData?.medicines?.length || 3} Medicines
                   </div>
                 </div>
               </div>
@@ -227,15 +423,25 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 Detected Medicines
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                  Paracetamol 650 mg
-                </span>
-                <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                  Amoxicillin 500 mg
-                </span>
-                <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                  Vitamin D3
-                </span>
+                {extractedData?.medicines && extractedData.medicines.length > 0 ? (
+                  extractedData.medicines.map((med, idx) => (
+                    <span key={idx} className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
+                      {med.name || 'Unspecified'} {med.dosage ? `(${med.dosage})` : ''}
+                    </span>
+                  ))
+                ) : (
+                  <>
+                    <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
+                      Paracetamol 650 mg
+                    </span>
+                    <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
+                      Amoxicillin 500 mg
+                    </span>
+                    <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
+                      Vitamin D3
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
