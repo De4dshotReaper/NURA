@@ -14,6 +14,8 @@ import { ConsultationTransition } from './components/onboarding/ConsultationTran
 import { FollowUpIntake } from './components/onboarding/FollowUpIntake';
 import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { LoginPage } from './components/auth/LoginPage';
+import { supabase } from './lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'login' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard'>('landing');
@@ -21,11 +23,46 @@ export const App: React.FC = () => {
   const [symptoms, setSymptoms] = useState<string>('');
   const [severityScore, setSeverityScore] = useState<number | null>(null);
   const [duration, setDuration] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const handleStartJourney = () => {
     setCurrentView('onboarding-1');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (isMounted) {
+        setSession(session);
+        setIsAuthLoading(false);
+      }
+    };
+
+    void loadSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (isMounted) {
+        setSession(nextSession);
+        setIsAuthLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthLoading && currentView === 'dashboard' && !session) {
+      setCurrentView('login');
+    }
+  }, [currentView, isAuthLoading, session]);
 
   // Intercept clicks on anchor links like #get-started or #dashboard
   useEffect(() => {
@@ -69,7 +106,11 @@ export const App: React.FC = () => {
     return () => document.removeEventListener('click', handleClick);
   }, [currentView]);
 
-  if (currentView === 'dashboard') {
+  if (isAuthLoading) {
+    return <div aria-busy="true" />;
+  }
+
+  if (currentView === 'dashboard' && session) {
     return <DashboardLayout entryMode={journeyType === 'new-illness' ? 'new' : 'follow-up'} />;
   }
 
