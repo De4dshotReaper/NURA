@@ -69,3 +69,11 @@ export interface AiExplanationQuery {
   plainExplanation: string;
   timestamp: string;
 }
+
+export interface ExtractedMedicine {
+  name: string | null;
+  dosage: string | null;
+  frequency: string | null;
+  instructions: string | null;
+  confidence: 'high' | 'medium' | 'low' | null;
+}

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Pill, FileText, CheckCircle2, Clock, Calendar, Sun, Shield, ArrowLeft, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { PrescriptionSummaryPage } from './PrescriptionSummaryPage';
+import type { ExtractedMedicine } from '../../types';
 
 interface PrescriptionItem {
   id: string;
@@ -11,16 +12,8 @@ interface PrescriptionItem {
   title: string;
 }
 
-interface Medicine {
-  name: string | null;
-  dosage: string | null;
-  frequency: string | null;
-  instructions: string | null;
-  confidence: 'high' | 'medium' | 'low';
-}
-
 interface PrescriptionResponse {
-  medicines: Medicine[];
+  medicines: ExtractedMedicine[];
   rawText: string | null;
 }
 
@@ -44,6 +37,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
   const [hasUploaded, setHasUploaded] = useState(true);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<PrescriptionResponse | null>(null);
+  const [processedPrescriptionId, setProcessedPrescriptionId] = useState<string | null>(null);
   const [pdfMessage, setPdfMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +76,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
     setErrorMessage(null);
     setPdfMessage(null);
     setExtractedData(null);
+    setProcessedPrescriptionId(null);
     setSelectedFile(file);
 
     const newRx: PrescriptionItem = {
@@ -111,38 +106,20 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         });
 
         if (error) {
-          console.error('Supabase Error Object:', error);
-          console.error('Error keys:', Object.keys(error));
-          // @ts-ignore
-          console.error('Error name:', error.name, 'message:', error.message, 'context:', error.context);
-
-          let errorMsg = error.message || 'Failed to call analyze-prescription function.';
-          // @ts-ignore
-          if (error.context) {
-            // @ts-ignore
-            if (error.context instanceof Response) {
-              // @ts-ignore
-              const body = await error.context.clone().text();
-              console.error('Context Body:', body);
-              errorMsg = `Error: ${errorMsg}. Body: ${body}`;
-            } else {
-              try {
-                // @ts-ignore
-                const context = typeof error.context === 'string' ? JSON.parse(error.context) : error.context;
-                errorMsg = `Error: ${context.error || errorMsg}. Upstream: ${context.upstreamStatus} ${context.upstreamStatusText}. Body: ${JSON.stringify(context.upstreamBody)}`;
-              } catch (e) {
-                // Fallback to original message if parsing fails
-              }
-            }
-          }
-          throw new Error(errorMsg);
+          throw new Error(error.message || 'Failed to analyze prescription image. Please try again.');
         }
 
         if (data && data.error) {
           throw new Error(data.error);
         }
 
-        setExtractedData(data as PrescriptionResponse);
+        const prescriptionData = data as PrescriptionResponse;
+        if (!prescriptionData || !Array.isArray(prescriptionData.medicines)) {
+          throw new Error('We could not read medicine details from this prescription. Please try another image.');
+        }
+
+        setExtractedData(prescriptionData);
+        setProcessedPrescriptionId(newRx.id);
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Failed to analyze prescription image. Please try again.');
       } finally {
@@ -170,6 +147,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         prescriptionTitle={activeSummaryRx.title}
         uploadDate={activeSummaryRx.date}
         fileType={activeSummaryRx.fileType}
+        medicines={activeSummaryRx.id === processedPrescriptionId ? extractedData?.medicines : undefined}
       />
     );
   }
@@ -306,26 +284,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         </motion.div>
       )}
 
-      {/* EXTRACTED STRUCTURED RESPONSE (TEMPORARY DEBUG DISPLAY) */}
-      {extractedData && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-3"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="font-heading font-bold text-base text-nuraText">
-              Extracted Structured Response (Gemini Verification)
-            </h3>
-            <span className="text-xs font-semibold text-nuraTextSecondary">
-              JSON Output
-            </span>
-          </div>
-          <pre className="p-4 bg-gray-50 rounded-xl text-xs font-mono text-nuraText whitespace-pre-wrap max-h-80 overflow-y-auto">
-            {JSON.stringify(extractedData, null, 2)}
-          </pre>
-        </motion.div>
-      )}
+      {/* EXTRACTED STRUCTURED RESPONSE (TEMPORARY DEBUG DISPLAY REMOVED) */}
 
       {/* NEW: PRESCRIPTION SUMMARY SECTION (INSERTED BETWEEN UPLOAD & MEDICINE ACCORDION) */}
       <motion.div
@@ -366,7 +325,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                     Medicines Detected
                   </div>
                   <div className="font-heading font-bold text-lg sm:text-xl text-nuraText">
-                    {extractedData?.medicines?.length || 3} Medicines
+                    {extractedData ? extractedData.medicines.length : 3} Medicines
                   </div>
                 </div>
               </div>
@@ -423,10 +382,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 Detected Medicines
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                {extractedData?.medicines && extractedData.medicines.length > 0 ? (
+                {extractedData ? (
                   extractedData.medicines.map((med, idx) => (
                     <span key={idx} className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                      {med.name || 'Unspecified'} {med.dosage ? `(${med.dosage})` : ''}
+                      {med.name || 'Not specified on prescription'} {med.dosage ? `(${med.dosage})` : ''}
                     </span>
                   ))
                 ) : (
@@ -453,7 +412,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
               </span>
 
               <button
-                onClick={() => setActiveSummaryRx({ id: '1', date: 'Today', fileType: 'PDF', title: 'Prescription_Summary.pdf' })}
+                onClick={() => {
+                  const processedPrescription = prescriptions.find((rx) => rx.id === processedPrescriptionId);
+                  setActiveSummaryRx(processedPrescription ?? { id: '1', date: 'Today', fileType: 'PDF', title: 'Prescription_Summary.pdf' });
+                }}
                 className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
                 Open Medicine Details →

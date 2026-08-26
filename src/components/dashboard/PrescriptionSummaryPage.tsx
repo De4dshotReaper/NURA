@@ -15,59 +15,46 @@ import {
   Shield,
   AlertTriangle
 } from 'lucide-react';
+import type { ExtractedMedicine } from '../../types';
 
-interface Medicine {
-  id: string;
-  name: string;
-  dosage: string;
-  whatItsFor: string;
-  howToTakeIt: string;
-  sideEffects: string[];
-  thingsToRemember: string;
-  status: string;
-}
+const defaultMedicines: ExtractedMedicine[] = [
+  {
+    name: 'Paracetamol 650 mg',
+    dosage: '650 mg',
+    frequency: '3 x day',
+    instructions: null,
+    confidence: 'high',
+  },
+  {
+    name: 'Amoxicillin 500 mg',
+    dosage: '500 mg',
+    frequency: 'Every 8 hours',
+    instructions: null,
+    confidence: 'high',
+  },
+];
 
 interface PrescriptionSummaryPageProps {
   onBack?: () => void;
   prescriptionTitle?: string;
   uploadDate?: string;
   fileType?: string;
+  medicines?: ExtractedMedicine[];
 }
-
-const defaultMedicines: Medicine[] = [
-  {
-    id: '1',
-    name: 'Paracetamol 650 mg',
-    dosage: '650 mg',
-    whatItsFor: 'Reduces fever and helps relieve mild to moderate pain.',
-    howToTakeIt: 'After meals with water.',
-    sideEffects: ['Mild nausea', 'Upset stomach', 'Drowsiness'],
-    thingsToRemember: 'Avoid exceeding the recommended daily dose.',
-    status: 'Active Medicine',
-  },
-  {
-    id: '2',
-    name: 'Amoxicillin 500 mg',
-    dosage: '500 mg',
-    whatItsFor: 'Fights bacterial infections by stopping the growth of bacteria.',
-    howToTakeIt: 'Take every 8 hours with a full glass of water, preferably after meals.',
-    sideEffects: ['Mild diarrhea', 'Nausea', 'Skin rash (if allergic)'],
-    thingsToRemember: 'Complete the full course even if you start feeling better.',
-    status: 'Active Medicine',
-  },
-];
 
 export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = ({
   onBack,
   prescriptionTitle = 'Prescription_31_Jul.pdf',
   uploadDate = '31 Jul 2026',
   fileType = 'PDF',
+  medicines,
 }) => {
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
-    '1': true, // First card open by default
-    '2': false,
+    '0': true, // First card open by default
   });
   const [showOriginalModal, setShowOriginalModal] = useState(false);
+
+  const displayMedicines = medicines ?? defaultMedicines;
 
   const toggleCard = (id: string) => {
     setExpandedCards(prev => ({
@@ -129,7 +116,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                 Uploaded {uploadDate}
               </span>
               <span>•</span>
-              <span>{defaultMedicines.length} medicines detected</span>
+              <span>{displayMedicines.length} medicines detected</span>
               <span>•</span>
               <span className="uppercase font-semibold text-nuraText">{fileType}</span>
             </div>
@@ -157,19 +144,19 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
         </div>
 
         <div className="space-y-4">
-          {defaultMedicines.map((medicine) => {
-            const isExpanded = expandedCards[medicine.id] ?? false;
+          {displayMedicines.map((medicine, index) => {
+            const isExpanded = expandedCards[index] ?? false;
 
             return (
               <motion.div
-                key={medicine.id}
+                key={index}
                 layout
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                 className="bg-white rounded-[1.75rem] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)]"
               >
                 {/* Card Header (Always visible, click to toggle) */}
                 <div
-                  onClick={() => toggleCard(medicine.id)}
+                  onClick={() => toggleCard(index.toString())}
                   className="p-6 sm:p-7 flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-4">
@@ -179,15 +166,15 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                     <div className="space-y-1">
                       <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="font-heading font-extrabold text-lg sm:text-xl text-nuraText group-hover:text-primary transition-colors">
-                          {medicine.name}
+                          {medicine.name || 'Not specified on prescription'}
                         </h3>
                         <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          {medicine.status}
+                          {medicine.confidence ? `${medicine.confidence.charAt(0).toUpperCase() + medicine.confidence.slice(1)} confidence` : 'Confidence not specified'}
                         </span>
                       </div>
                       <p className="text-xs text-nuraTextSecondary font-medium">
-                        What it's for: <span className="text-nuraText">{medicine.whatItsFor}</span>
+                        Dosage: <span className="text-nuraText">{medicine.dosage || 'Not specified on prescription'}</span> • Frequency: <span className="text-nuraText">{medicine.frequency || 'Not specified on prescription'}</span>
                       </p>
                     </div>
                   </div>
@@ -215,10 +202,10 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <Pill className="w-3.5 h-3.5 text-primary" />
-                          <span>What it's for</span>
+                          <span>Dosage</span>
                         </div>
                         <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                          {medicine.whatItsFor}
+                          {medicine.dosage || 'Not specified on prescription'}
                         </p>
                       </div>
 
@@ -226,37 +213,32 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <Clock className="w-3.5 h-3.5 text-primary" />
-                          <span>How to take it</span>
+                          <span>Frequency</span>
                         </div>
                         <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                          {medicine.howToTakeIt}
+                          {medicine.frequency || 'Not specified on prescription'}
                         </p>
                       </div>
 
-                      {/* Common side effects */}
+                      {/* Instructions */}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Common side effects</span>
+                          <span>Instructions</span>
                         </div>
-                        <ul className="space-y-1.5 pl-5.5">
-                          {medicine.sideEffects.map((effect, idx) => (
-                            <li key={idx} className="font-sans text-sm text-nuraText flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0" />
-                              <span>{effect}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
+                          {medicine.instructions || 'Not specified on prescription'}
+                        </p>
                       </div>
 
-                      {/* Things to remember */}
+                      {/* Confidence */}
                       <div className="space-y-1.5 pt-2 border-t border-gray-200/60">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70 mb-1.5">
                           <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Things to remember</span>
+                          <span>Extraction Confidence</span>
                         </div>
                         <p className="font-sans text-sm text-nuraText font-medium bg-white p-4 rounded-xl border border-gray-200/60 shadow-2xs">
-                          {medicine.thingsToRemember}
+                          {medicine.confidence ? medicine.confidence.charAt(0).toUpperCase() + medicine.confidence.slice(1) : 'Not specified on prescription'}
                         </p>
                       </div>
                     </motion.div>
@@ -334,14 +316,13 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                   <FileText className="w-8 h-8" />
                 </div>
                 <div className="space-y-2 max-w-sm mx-auto">
-                  <h4 className="font-heading font-bold text-xl text-nuraText">City Health Medical Center</h4>
-                  <p className="text-xs text-nuraTextSecondary">Dr. Sarah Jenkins, M.D. (General Medicine)</p>
+                  <h4 className="font-heading font-bold text-xl text-nuraText">Prescription Summary</h4>
                   <div className="pt-4 text-left text-xs text-nuraText space-y-2 border-t border-gray-200">
-                    <p><strong>Patient:</strong> Divyanshu</p>
                     <p><strong>Date:</strong> {uploadDate}</p>
-                    <p><strong>Rx:</strong></p>
-                    <p>1. Paracetamol 650 mg — 1 tab thrice daily after meals</p>
-                    <p>2. Amoxicillin 500 mg — 1 tab every 8 hours</p>
+                    <p><strong>Medicines:</strong></p>
+                    {displayMedicines.map((m, i) => (
+                      <p key={i}>{i + 1}. {m.name || 'Not specified on prescription'} — {m.dosage || 'Not specified on prescription'}, {m.frequency || 'Not specified on prescription'}</p>
+                    ))}
                   </div>
                 </div>
               </div>
