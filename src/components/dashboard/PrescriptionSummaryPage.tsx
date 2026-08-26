@@ -24,6 +24,9 @@ const defaultMedicines: ExtractedMedicine[] = [
     frequency: '3 x day',
     instructions: null,
     confidence: 'high',
+    whatItsFor: 'Commonly used to reduce fever and relieve mild to moderate pain.',
+    commonSideEffects: ['Mild nausea', 'Upset stomach', 'Drowsiness'],
+    thingsToRemember: ['Avoid exceeding the recommended daily dose.'],
   },
   {
     name: 'Amoxicillin 500 mg',
@@ -31,6 +34,9 @@ const defaultMedicines: ExtractedMedicine[] = [
     frequency: 'Every 8 hours',
     instructions: null,
     confidence: 'high',
+    whatItsFor: 'Commonly used to treat certain bacterial infections.',
+    commonSideEffects: ['Mild diarrhea', 'Nausea', 'Skin rash (if allergic)'],
+    thingsToRemember: ['Complete the full course as directed by your prescriber.'],
   },
 ];
 
@@ -40,6 +46,7 @@ interface PrescriptionSummaryPageProps {
   uploadDate?: string;
   fileType?: string;
   medicines?: ExtractedMedicine[];
+  isExplanationLoading?: boolean;
 }
 
 export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = ({
@@ -48,6 +55,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
   uploadDate = '31 Jul 2026',
   fileType = 'PDF',
   medicines,
+  isExplanationLoading = false,
 }) => {
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
     '0': true, // First card open by default
@@ -139,7 +147,9 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
             Prescribed Medicines
           </h2>
           <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary">
-            Tap any medicine card to view detailed explanations, dosage guidance, and side effects.
+            {isExplanationLoading
+              ? 'Preparing general medicine information…'
+              : 'Prescription details are shown alongside general medicine information.'}
           </p>
         </div>
 
@@ -231,15 +241,67 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                         </p>
                       </div>
 
-                      {/* Confidence */}
+                      {/* General medicine information */}
                       <div className="space-y-1.5 pt-2 border-t border-gray-200/60">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70 mb-1.5">
                           <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Extraction Confidence</span>
+                          <span>What It&apos;s For — General Information</span>
                         </div>
                         <p className="font-sans text-sm text-nuraText font-medium bg-white p-4 rounded-xl border border-gray-200/60 shadow-2xs">
-                          {medicine.confidence ? medicine.confidence.charAt(0).toUpperCase() + medicine.confidence.slice(1) : 'Not specified on prescription'}
+                          {isExplanationLoading
+                            ? 'General medicine information is being prepared.'
+                            : medicine.whatItsFor || 'General educational information is not available.'}
                         </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Common Side Effects — General Information</span>
+                        </div>
+                        {isExplanationLoading ? (
+                          <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
+                            General medicine information is being prepared.
+                          </p>
+                        ) : medicine.commonSideEffects && medicine.commonSideEffects.length > 0 ? (
+                          <ul className="space-y-1.5 pl-5.5">
+                            {medicine.commonSideEffects.map((effect, effectIndex) => (
+                              <li key={effectIndex} className="font-sans text-sm text-nuraText flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0" />
+                                <span>{effect}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
+                            General educational information is not available.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
+                          <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Things to Remember — General Information</span>
+                        </div>
+                        {isExplanationLoading ? (
+                          <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
+                            General medicine information is being prepared.
+                          </p>
+                        ) : medicine.thingsToRemember && medicine.thingsToRemember.length > 0 ? (
+                          <ul className="space-y-1.5 pl-5.5">
+                            {medicine.thingsToRemember.map((item, itemIndex) => (
+                              <li key={itemIndex} className="font-sans text-sm text-nuraText flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
+                            General educational information is not available.
+                          </p>
+                        )}
                       </div>
                     </motion.div>
                   )}

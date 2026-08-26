@@ -76,4 +76,7 @@ export interface ExtractedMedicine {
   frequency: string | null;
   instructions: string | null;
   confidence: 'high' | 'medium' | 'low' | null;
+  whatItsFor?: string | null;
+  commonSideEffects?: string[];
+  thingsToRemember?: string[];
 }

@@ -17,6 +17,10 @@ interface PrescriptionResponse {
   rawText: string | null;
 }
 
+interface MedicineExplanationResponse {
+  medicines: Array<Pick<ExtractedMedicine, 'name' | 'whatItsFor' | 'commonSideEffects' | 'thingsToRemember'>>;
+}
+
 interface MedicineInformationPageProps {
   onBackToDashboard?: () => void;
 }
@@ -36,11 +40,13 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
   const [activeSummaryRx, setActiveSummaryRx] = useState<PrescriptionItem | null>(null);
   const [hasUploaded, setHasUploaded] = useState(true);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [isExplanationLoading, setIsExplanationLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<PrescriptionResponse | null>(null);
   const [processedPrescriptionId, setProcessedPrescriptionId] = useState<string | null>(null);
   const [pdfMessage, setPdfMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const processedPrescriptionIdRef = useRef<string | null>(null);
 
   const handleFileSelect = async (file: File) => {
     const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -77,6 +83,8 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
     setPdfMessage(null);
     setExtractedData(null);
     setProcessedPrescriptionId(null);
+    processedPrescriptionIdRef.current = null;
+    setIsExplanationLoading(false);
     setSelectedFile(file);
 
     const newRx: PrescriptionItem = {
@@ -120,6 +128,66 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
         setExtractedData(prescriptionData);
         setProcessedPrescriptionId(newRx.id);
+        processedPrescriptionIdRef.current = newRx.id;
+
+        const medicineNames = prescriptionData.medicines
+          .map((medicine) => medicine.name?.trim())
+          .filter((name): name is string => Boolean(name));
+
+        if (medicineNames.length > 0) {
+          setIsExplanationLoading(true);
+
+          void (async () => {
+            try {
+              const { data: explanationData, error: explanationError } = await supabase.functions.invoke('explain-medicines', {
+                body: { medicineNames },
+              });
+
+              if (explanationError) {
+                throw new Error(explanationError.message);
+              }
+
+              const explanations = explanationData as MedicineExplanationResponse;
+              if (!explanations || !Array.isArray(explanations.medicines)) {
+                throw new Error('Invalid medicine explanation response.');
+              }
+
+              const explanationsByName = new Map(
+                explanations.medicines
+                  .filter((medicine) => medicine.name)
+                  .map((medicine) => [medicine.name!.trim().toLowerCase(), medicine])
+              );
+
+              if (processedPrescriptionIdRef.current === newRx.id) {
+                setExtractedData((currentData) => currentData && ({
+                  ...currentData,
+                  medicines: currentData.medicines.map((medicine) => {
+                    const explanation = medicine.name
+                      ? explanationsByName.get(medicine.name.trim().toLowerCase())
+                      : undefined;
+
+                    return explanation
+                      ? {
+                          ...medicine,
+                          whatItsFor: explanation.whatItsFor ?? null,
+                          commonSideEffects: explanation.commonSideEffects ?? [],
+                          thingsToRemember: explanation.thingsToRemember ?? [],
+                        }
+                      : medicine;
+                  }),
+                }));
+              }
+            } catch {
+              if (processedPrescriptionIdRef.current === newRx.id) {
+                setErrorMessage('General medicine information is temporarily unavailable. Your prescription details are still available.');
+              }
+            } finally {
+              if (processedPrescriptionIdRef.current === newRx.id) {
+                setIsExplanationLoading(false);
+              }
+            }
+          })();
+        }
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Failed to analyze prescription image. Please try again.');
       } finally {
@@ -148,6 +216,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         uploadDate={activeSummaryRx.date}
         fileType={activeSummaryRx.fileType}
         medicines={activeSummaryRx.id === processedPrescriptionId ? extractedData?.medicines : undefined}
+        isExplanationLoading={activeSummaryRx.id === processedPrescriptionId && isExplanationLoading}
       />
     );
   }
