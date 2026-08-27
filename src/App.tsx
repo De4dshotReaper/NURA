@@ -39,6 +39,9 @@ export const App: React.FC = () => {
 
       if (isMounted) {
         setSession(session);
+        if (session) {
+          setCurrentView('dashboard');
+        }
         setIsAuthLoading(false);
       }
     };
