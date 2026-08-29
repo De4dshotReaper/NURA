@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, CheckCircle2, Calendar, ArrowLeft, Activity, Plus } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { FileText, CheckCircle2, ArrowLeft, Activity, AlertCircle, X } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { LabReportSummaryPage } from './LabReportSummaryPage';
+import { LabReportAnalysis } from '../../types';
 
 interface LabReportItem {
   id: string;
   date: string;
   fileType: 'PDF' | 'JPG' | 'PNG';
   title: string;
+  analysis?: LabReportAnalysis;
 }
 
 interface LabReportExplanationPageProps {
@@ -17,38 +20,251 @@ interface LabReportExplanationPageProps {
 export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> = ({
   onBackToDashboard
 }) => {
-  const [reports, setReports] = useState<LabReportItem[]>([
-    { id: '1', date: '31 Jul 2026', fileType: 'PDF', title: 'CBC_Report_31_Jul.pdf' },
-    { id: '2', date: '12 Jul 2026', fileType: 'PDF', title: 'Lipid_Profile.pdf' },
-  ]);
+  const [reports, setReports] = useState<LabReportItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeReport, setActiveReport] = useState<LabReportItem | null>(null);
-  const [hasReports, setHasReports] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isAnalyzingRef = useRef(false);
 
-  const handleSimulateUpload = () => {
+  // Load saved reports from public.lab_reports on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSavedReports = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('lab_reports')
+          .select('*')
+          .order('uploaded_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching lab reports from Supabase:', error);
+          return;
+        }
+
+        if (data && isMounted) {
+          const loadedReports: LabReportItem[] = data.map((row) => ({
+            id: row.id,
+            title: row.file_name,
+            fileType: row.file_type as 'PDF' | 'JPG' | 'PNG',
+            date: new Date(row.uploaded_at).toLocaleDateString('en-US', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            }),
+            analysis: {
+              reportFormat: 'structured',
+              reportType: row.report_type ?? null,
+              laboratory: row.laboratory ?? null,
+              reportDate: row.report_date ?? null,
+              rawText: row.raw_text ?? null,
+              parameters: row.parameters || [],
+            },
+          }));
+
+          setReports(loadedReports);
+        }
+      } catch (err) {
+        console.error('Unexpected error loading saved lab reports:', err);
+      }
+    };
+
+    fetchSavedReports();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const analyzeLabReport = async (file: File, newReportItem: LabReportItem) => {
+    isAnalyzingRef.current = true;
+    setIsAnalyzing(true);
+    setErrorMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data, error } = await supabase.functions.invoke('analyze-lab-report', {
+        body: formData,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('LAB REPORT ANALYSIS:', data);
+      const analysis = data as LabReportAnalysis;
+
+      if (
+        !analysis ||
+        analysis.reportFormat === 'unsupported' ||
+        !Array.isArray(analysis.parameters) ||
+        analysis.parameters.length === 0
+      ) {
+        setErrorMessage("Nura couldn't identify a structured laboratory panel with measurable parameters and reference ranges in this document.");
+        setIsAnalyzing(false);
+        isAnalyzingRef.current = false;
+        return;
+      }
+
+      let finalReportItem: LabReportItem = {
+        ...newReportItem,
+        analysis,
+      };
+
+      // Attempt to persist structured analysis to public.lab_reports table
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          const { data: insertedData, error: insertError } = await supabase
+            .from('lab_reports')
+            .insert({
+              user_id: userData.user.id,
+              file_name: newReportItem.title,
+              file_type: newReportItem.fileType,
+              report_type: analysis.reportType,
+              laboratory: analysis.laboratory,
+              report_date: analysis.reportDate,
+              raw_text: analysis.rawText,
+              parameters: analysis.parameters,
+              uploaded_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Supabase lab_reports insert error:', insertError);
+            setErrorMessage('Report analyzed successfully, but could not be saved to your account history.');
+          } else if (insertedData) {
+            finalReportItem = {
+              id: insertedData.id,
+              title: insertedData.file_name,
+              fileType: insertedData.file_type as 'PDF' | 'JPG' | 'PNG',
+              date: new Date(insertedData.uploaded_at).toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              }),
+              analysis,
+            };
+          }
+        }
+      } catch (saveErr) {
+        console.error('Error persisting lab report to Supabase:', saveErr);
+        setErrorMessage('Report analyzed successfully, but could not be saved to your account history.');
+      }
+
+      setReports((currentReports) => [
+        finalReportItem,
+        ...currentReports.filter((r) => r.id !== newReportItem.id && r.id !== finalReportItem.id),
+      ]);
+      setActiveReport(finalReportItem);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 2500);
+
+    } catch (error) {
+      console.error('LAB REPORT ANALYSIS ERROR:', error);
+      setErrorMessage('Could not analyze this lab report. Please try again.');
+    } finally {
+      isAnalyzingRef.current = false;
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleDeleteReport = async (e: React.MouseEvent, reportId: string) => {
+    e.stopPropagation();
+    setErrorMessage(null);
+
+    try {
+      const { error } = await supabase.from('lab_reports').delete().eq('id', reportId);
+
+      if (error) {
+        console.error('Supabase lab report delete error:', error);
+        setErrorMessage('Could not delete lab report. Please try again.');
+        return;
+      }
+
+      setReports((current) => current.filter((r) => r.id !== reportId));
+      if (activeReport?.id === reportId) {
+        setActiveReport(null);
+      }
+    } catch (err) {
+      console.error('Unexpected error deleting lab report:', err);
+      setErrorMessage('Could not delete lab report. Please try again.');
+    }
+  };
+
+  const handleFileSelect = async (file: File) => {
+    if (isAnalyzingRef.current) {
+      return;
+    }
+
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setErrorMessage('File size exceeds the 10 MB limit. Please select a smaller file.');
+      setShowSuccess(false);
+      return;
+    }
+
+    const fileName = file.name.toLowerCase();
+    const mimeType = file.type.toLowerCase();
+    let detectedType: 'PDF' | 'JPG' | 'PNG' | null = null;
+
+    if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
+      detectedType = 'PDF';
+    } else if (
+      mimeType === 'image/jpeg' ||
+      mimeType === 'image/jpg' ||
+      fileName.endsWith('.jpg') ||
+      fileName.endsWith('.jpeg')
+    ) {
+      detectedType = 'JPG';
+    } else if (mimeType === 'image/png' || fileName.endsWith('.png')) {
+      detectedType = 'PNG';
+    }
+
+    if (!detectedType) {
+      setErrorMessage('Invalid file type. Only PDF, JPG, and PNG files are allowed.');
+      setShowSuccess(false);
+      return;
+    }
+
     const newReport: LabReportItem = {
       id: Date.now().toString(),
       date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-      fileType: 'PDF',
-      title: `Lab_Report_${Date.now().toString().slice(-4)}.pdf`,
+      fileType: detectedType,
+      title: file.name,
     };
-    setReports([newReport, ...reports]);
-    setHasReports(true);
-    setShowSuccess(true);
-    setActiveReport(newReport);
-    setTimeout(() => {
-      setShowSuccess(false);
-    }, 2500);
+
+    setErrorMessage(null);
+    setSelectedFile(file);
+
+    await analyzeLabReport(file, newReport);
   };
 
-  if (activeReport) {
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+    event.target.value = '';
+  };
+
+  if (activeReport && activeReport.analysis) {
     return (
       <LabReportSummaryPage
         onBack={() => setActiveReport(null)}
         reportTitle={activeReport.title}
         uploadDate={activeReport.date}
         fileType={activeReport.fileType}
+        analysisData={activeReport.analysis}
       />
     );
   }
@@ -95,18 +311,53 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
           className="bg-emerald-50 border border-emerald-200/80 p-4 rounded-2xl flex items-center gap-3 text-emerald-800 shadow-xs"
         >
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span className="text-sm font-semibold">Report successfully processed and analyzed.</span>
+          <span className="text-sm font-semibold">Report uploaded successfully.</span>
         </motion.div>
       )}
 
-      {/* UPLOAD SECTION (Reusing Prescription Upload style) */}
+      {errorMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="bg-red-50 border border-red-200/80 p-4 rounded-2xl flex items-center gap-3 text-red-800"
+        >
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          <span className="text-sm font-semibold">{errorMessage}</span>
+        </motion.div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        onChange={handleFileInputChange}
+        disabled={isAnalyzing}
+        className="hidden"
+      />
+
+      {/* UPLOAD SECTION */}
       <motion.div
         whileHover={{ scale: 1.008 }}
         transition={{ duration: 0.2 }}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleSimulateUpload(); }}
-        onClick={handleSimulateUpload}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsDragging(false);
+          if (isAnalyzing) {
+            return;
+          }
+          const file = event.dataTransfer.files?.[0];
+          if (file) {
+            handleFileSelect(file);
+          }
+        }}
+        onClick={() => {
+          if (!isAnalyzing) {
+            fileInputRef.current?.click();
+          }
+        }}
         className={`bg-white rounded-[1.75rem] p-10 sm:p-14 border-2 border-dashed transition-all duration-250 cursor-pointer flex flex-col items-center justify-center text-center shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] ${
           isDragging ? 'border-primary bg-blue-50/30' : 'border-gray-200/80 hover:border-gray-300 bg-white'
         }`}
@@ -135,34 +386,36 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
         </div>
       </motion.div>
 
+      {isAnalyzing && (
+        <div className="bg-blue-50 border border-blue-200/80 p-4 rounded-2xl flex items-center gap-3 text-blue-800">
+          <Activity className="w-5 h-5 text-blue-600 animate-pulse shrink-0" />
+          <span className="text-sm font-semibold">Analyzing lab report...</span>
+        </div>
+      )}
+
       {/* RECENT REPORTS SECTION */}
       <div className="space-y-6 pt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-              Recent Reports
-            </h2>
-            <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary mt-0.5">
-              Your uploaded laboratory history and plain-language breakdowns
-            </p>
-          </div>
-          <button
-            onClick={() => setHasReports(!hasReports)}
-            className="text-xs text-nuraTextSecondary/60 hover:text-nuraText transition-colors cursor-pointer"
-            title="Toggle state between populated and empty for demo"
-          >
-            {hasReports ? 'Show Empty State' : 'Show Populated History'}
-          </button>
+        <div>
+          <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
+            Recent Reports
+          </h2>
+          <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary mt-0.5">
+            Your uploaded laboratory history and plain-language breakdowns
+          </p>
         </div>
 
-        {hasReports && reports.length > 0 ? (
+        {reports.length > 0 ? (
           <div className="grid grid-cols-1 gap-4">
             {reports.map((report) => (
               <motion.div
                 key={report.id}
                 whileHover={{ scale: 1.008 }}
                 transition={{ duration: 0.2 }}
-                onClick={() => setActiveReport(report)}
+                onClick={() => {
+                  if (report.analysis) {
+                    setActiveReport(report);
+                  }
+                }}
                 className="bg-white rounded-[1.25rem] p-5 sm:p-6 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-4">
@@ -179,8 +432,17 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-                  <span className="transform group-hover:translate-x-1 transition-transform">View →</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-primary transform group-hover:translate-x-0.5 transition-transform">
+                    View →
+                  </span>
+                  <button
+                    onClick={(e) => handleDeleteReport(e, report.id)}
+                    className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 flex items-center justify-center transition-colors cursor-pointer"
+                    title="Delete report"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </motion.div>
             ))}

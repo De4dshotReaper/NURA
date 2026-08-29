@@ -80,3 +80,30 @@ export interface ExtractedMedicine {
   commonSideEffects?: string[];
   thingsToRemember?: string[];
 }
+
+export interface LabParameter {
+  id: string;
+  name: string;
+  subtitle: string | null;
+  value: string | null;
+  unit: string | null;
+  referenceRange: string | null;
+  status:
+    | 'Normal'
+    | 'Below Range'
+    | 'Above Range'
+    | 'Outside Range'
+    | 'Unknown';
+  shortExplanation: string | null;
+  simpleExplanation: string | null;
+  meaningOfResult: string | null;
+}
+
+export interface LabReportAnalysis {
+  reportFormat: 'structured' | 'unsupported';
+  reportType: string | null;
+  laboratory: string | null;
+  reportDate: string | null;
+  parameters: LabParameter[];
+  rawText: string | null;
+}
