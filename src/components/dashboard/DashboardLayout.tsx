@@ -32,10 +32,43 @@ interface SymptomEntry {
   created_at: string;
 }
 
+interface HealthEpisode {
+  id: string;
+  initial_symptom_entry_id: string;
+  status: 'active' | 'completed';
+  started_at: string;
+}
+
+interface CurrentHealthEpisode extends HealthEpisode {
+  initialSymptom: SymptomEntry;
+}
+
 interface FollowUpEntry {
   progress: string;
   current_symptoms: string | null;
   medicine_compliance: string | null;
+  created_at: string;
+}
+
+interface EpisodeFollowUpEventRow {
+  id: string;
+  current_symptoms: string | null;
+  progress: string | null;
+  created_at: string;
+}
+
+interface EpisodeQuestionRow {
+  id: string;
+  question: string;
+  created_at: string;
+}
+
+interface EpisodeConsultationRow {
+  id: string;
+  notes: string;
+  doctor_name: string | null;
+  clinic_name: string | null;
+  consultation_at: string | null;
   created_at: string;
 }
 
@@ -91,9 +124,12 @@ const settingsNavItems: NavItem[] = [
 const getGreeting = (): string => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good Morning';
-  if (hour < 18) return 'Good Afternoon';
+  if (hour < 17) return 'Good Afternoon';
   return 'Good Evening';
 };
+
+const getFirstName = (fullName?: string): string =>
+  fullName?.trim().split(/\s+/)[0] ?? '';
 
 const getFormattedDate = (): string => {
   const today = new Date();
@@ -117,6 +153,7 @@ interface DashboardLayoutProps {
   questionSymptomEntryId?: string | null;
   consultationSymptomEntryId?: string | null;
   userId?: string;
+  userFullName?: string;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -132,50 +169,111 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   questionSymptomEntryId = null,
   consultationSymptomEntryId = null,
   userId,
+  userFullName,
 }) => {
   const [activeItem, setActiveItem] = useState<string>(initialActiveItem);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [latestSymptom, setLatestSymptom] = useState<SymptomEntry | null>(null);
-  const [isLoadingSymptoms, setIsLoadingSymptoms] = useState<boolean>(true);
+  const [currentEpisode, setCurrentEpisode] = useState<CurrentHealthEpisode | null>(null);
+  const [isLoadingCurrentEpisode, setIsLoadingCurrentEpisode] = useState<boolean>(true);
+  const [currentEpisodeError, setCurrentEpisodeError] = useState<string | null>(null);
+  const [showCompleteEpisodeConfirmation, setShowCompleteEpisodeConfirmation] = useState<boolean>(false);
+  const [isCompletingEpisode, setIsCompletingEpisode] = useState<boolean>(false);
+  const [completeEpisodeError, setCompleteEpisodeError] = useState<string | null>(null);
+  const [episodeRefreshKey, setEpisodeRefreshKey] = useState<number>(0);
   const [latestFollowUp, setLatestFollowUp] = useState<FollowUpEntry | null>(null);
   const [isLoadingFollowUp, setIsLoadingFollowUp] = useState<boolean>(true);
+  const [latestFollowUpError, setLatestFollowUpError] = useState<string | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<PreviewTimelineEvent[]>([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState<boolean>(true);
+  const greeting = getGreeting();
+  const firstName = getFirstName(userFullName);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadLatestSymptom = async () => {
+    const loadCurrentEpisode = async () => {
+      setIsLoadingCurrentEpisode(true);
+      setCurrentEpisodeError(null);
+
+      if (!userId) {
+        setCurrentEpisode(null);
+        setCurrentEpisodeError('Unable to load your current health episode.');
+        setIsLoadingCurrentEpisode(false);
+        return;
+      }
+
       try {
-        const { data, error } = await supabase
+        const { data: episode, error: episodeError } = await supabase
+          .from('health_episodes')
+          .select('id, initial_symptom_entry_id, status, started_at')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle<HealthEpisode>();
+
+        if (!isMounted) return;
+
+        if (episodeError) {
+          console.error('Failed to load current active health episode:', episodeError);
+          setCurrentEpisode(null);
+          setCurrentEpisodeError('Unable to load your current health episode. Please try again.');
+          return;
+        }
+
+        if (!episode) {
+          setCurrentEpisode(null);
+          return;
+        }
+
+        const { data: initialSymptom, error: symptomError } = await supabase
           .from('symptom_entries')
           .select('symptoms, severity, duration, created_at')
-          .order('created_at', { ascending: false })
-          .limit(1)
+          .eq('id', episode.initial_symptom_entry_id)
+          .eq('user_id', userId)
           .maybeSingle<SymptomEntry>();
 
         if (!isMounted) return;
 
-        if (error) {
-          console.error('Failed to load latest symptom entry:', error);
-          setLatestSymptom(null);
-        } else {
-          setLatestSymptom(data);
+        if (symptomError || !initialSymptom) {
+          console.error('Failed to load the initial symptom entry for current health episode:', symptomError ?? {
+            episodeId: episode.id,
+            symptomEntryId: episode.initial_symptom_entry_id,
+          });
+          setCurrentEpisode(null);
+          setCurrentEpisodeError('Your current health episode details are unavailable. Please try again.');
+          return;
         }
+
+        setCurrentEpisode({ ...episode, initialSymptom });
       } catch (error) {
         if (!isMounted) return;
-        console.error('Failed to load latest symptom entry:', error);
-        setLatestSymptom(null);
+        console.error('Unexpected error loading current health episode:', error);
+        setCurrentEpisode(null);
+        setCurrentEpisodeError('Unable to load your current health episode. Please try again.');
       } finally {
-        if (isMounted) setIsLoadingSymptoms(false);
+        if (isMounted) setIsLoadingCurrentEpisode(false);
       }
     };
 
+    void loadCurrentEpisode();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [episodeRefreshKey, userId]);
+
+  useEffect(() => {
+    let isMounted = true;
+
     const loadLatestFollowUp = async () => {
+      if (!currentEpisode) return;
+
       try {
         const { data, error } = await supabase
           .from('follow_up_entries')
           .select('progress, current_symptoms, medicine_compliance, created_at')
+          .eq('symptom_entry_id', currentEpisode.initial_symptom_entry_id)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle<FollowUpEntry>();
@@ -183,148 +281,142 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         if (!isMounted) return;
 
         if (error) {
-          console.error('Failed to load latest follow-up entry:', error);
+          console.error('Failed to load latest follow-up for current health episode:', error);
           setLatestFollowUp(null);
+          setLatestFollowUpError('The latest follow-up for this episode is unavailable. Please try again.');
         } else {
           setLatestFollowUp(data);
         }
       } catch (error) {
         if (!isMounted) return;
-        console.error('Failed to load latest follow-up entry:', error);
+        console.error('Unexpected error loading latest follow-up for current health episode:', error);
         setLatestFollowUp(null);
-      } finally {
-        if (isMounted) setIsLoadingFollowUp(false);
+        setLatestFollowUpError('The latest follow-up for this episode is unavailable. Please try again.');
       }
     };
 
     const loadDashboardTimeline = async () => {
+      if (!currentEpisode) return;
+
       try {
-        const loadSymptoms = async (): Promise<PreviewTimelineEvent[]> => {
-          try {
-            const { data, error } = await supabase
-              .from('symptom_entries')
-              .select('id, symptoms, severity, duration, created_at');
-            if (error) {
-              console.error('Failed to load symptom entries for dashboard timeline:', error);
-              return [];
-            }
-            return (data || []).map((row: any) => ({
-              id: `symptom-${row.id}`,
-              timestamp: row.created_at,
-              timestampMs: new Date(row.created_at).getTime(),
-              title: 'Symptoms Recorded',
-              description: row.symptoms || 'Symptoms recorded',
-              dateKey: getLocalDateKey(row.created_at),
-              dateLabel: formatEventDate(row.created_at),
-              timeStr: formatEventTime(row.created_at),
-            }));
-          } catch (error) {
-            console.error('Unexpected error loading symptom entries for dashboard timeline:', error);
-            return [];
-          }
-        };
-
-        const loadPrescriptions = async (): Promise<PreviewTimelineEvent[]> => {
-          try {
-            const { data, error } = await supabase
-              .from('prescriptions')
-              .select('id, file_name, file_type, medicines, uploaded_at');
-            if (error) {
-              console.error('Failed to load prescriptions for dashboard timeline:', error);
-              return [];
-            }
-            return (data || []).map((row: any) => {
-              const medicines = Array.isArray(row.medicines) ? row.medicines : [];
-              const medNames = medicines
-                .map((m: any) => m?.name || m?.medicineName)
-                .filter(Boolean)
-                .join(', ');
-              const desc = medNames ? `${row.file_name} (${medNames})` : row.file_name;
-              return {
-                id: `prescription-${row.id}`,
-                timestamp: row.uploaded_at,
-                timestampMs: new Date(row.uploaded_at).getTime(),
-                title: 'Prescription Added',
-                description: desc || 'Prescription uploaded',
-                dateKey: getLocalDateKey(row.uploaded_at),
-                dateLabel: formatEventDate(row.uploaded_at),
-                timeStr: formatEventTime(row.uploaded_at),
-              };
-            });
-          } catch (error) {
-            console.error('Unexpected error loading prescriptions for dashboard timeline:', error);
-            return [];
-          }
-        };
-
-        const loadLabReports = async (): Promise<PreviewTimelineEvent[]> => {
-          try {
-            const { data, error } = await supabase
-              .from('lab_reports')
-              .select('id, file_name, report_type, uploaded_at');
-            if (error) {
-              console.error('Failed to load lab reports for dashboard timeline:', error);
-              return [];
-            }
-            return (data || []).map((row: any) => {
-              const desc = row.report_type ? `${row.report_type} — ${row.file_name}` : row.file_name;
-              return {
-                id: `lab-${row.id}`,
-                timestamp: row.uploaded_at,
-                timestampMs: new Date(row.uploaded_at).getTime(),
-                title: 'Lab Report Uploaded',
-                description: desc || 'Lab report uploaded',
-                dateKey: getLocalDateKey(row.uploaded_at),
-                dateLabel: formatEventDate(row.uploaded_at),
-                timeStr: formatEventTime(row.uploaded_at),
-              };
-            });
-          } catch (error) {
-            console.error('Unexpected error loading lab reports for dashboard timeline:', error);
-            return [];
-          }
+        const symptomEntryId = currentEpisode.initial_symptom_entry_id;
+        const initialSymptom = currentEpisode.initialSymptom;
+        const symptomEvent: PreviewTimelineEvent = {
+          id: `symptom-${symptomEntryId}`,
+          timestamp: initialSymptom.created_at,
+          timestampMs: new Date(initialSymptom.created_at).getTime(),
+          title: 'Symptoms Recorded',
+          description: initialSymptom.symptoms || 'Symptoms recorded',
+          dateKey: getLocalDateKey(initialSymptom.created_at),
+          dateLabel: formatEventDate(initialSymptom.created_at),
+          timeStr: formatEventTime(initialSymptom.created_at),
         };
 
         const loadFollowUps = async (): Promise<PreviewTimelineEvent[]> => {
           try {
             const { data, error } = await supabase
               .from('follow_up_entries')
-              .select('id, current_symptoms, progress, created_at');
+              .select('id, current_symptoms, progress, created_at')
+              .eq('symptom_entry_id', symptomEntryId);
             if (error) {
-              console.error('Failed to load follow-up entries for dashboard timeline:', error);
+              console.error('Failed to load current episode follow-ups for dashboard timeline:', error);
               return [];
             }
-            return (data || []).map((row: any) => {
+            return ((data ?? []) as EpisodeFollowUpEventRow[]).map((row) => {
               const currentSymptoms = row.current_symptoms?.trim() ?? '';
               const progress = row.progress?.trim() ?? '';
-              const desc = currentSymptoms || progress || 'Follow-up information recorded.';
               return {
                 id: `followup-${row.id}`,
                 timestamp: row.created_at,
                 timestampMs: new Date(row.created_at).getTime(),
                 title: 'Follow-up Recorded',
-                description: desc,
+                description: currentSymptoms || progress || 'Follow-up information recorded.',
                 dateKey: getLocalDateKey(row.created_at),
                 dateLabel: formatEventDate(row.created_at),
                 timeStr: formatEventTime(row.created_at),
               };
             });
           } catch (error) {
-            console.error('Unexpected error loading follow-up entries for dashboard timeline:', error);
+            console.error('Unexpected error loading current episode follow-ups for dashboard timeline:', error);
+            return [];
+          }
+        };
+
+        const loadQuestions = async (): Promise<PreviewTimelineEvent[]> => {
+          try {
+            const { data, error } = await supabase
+              .from('consultation_questions')
+              .select('id, question, created_at')
+              .eq('symptom_entry_id', symptomEntryId)
+              .order('created_at', { ascending: true });
+            if (error) {
+              console.error('Failed to load current episode questions for dashboard timeline:', error);
+              return [];
+            }
+            const questions = (data ?? []) as EpisodeQuestionRow[];
+            if (questions.length === 0) return [];
+
+            const timestamp = questions[0].created_at;
+            return [{
+              id: `questions-${symptomEntryId}`,
+              timestamp,
+              timestampMs: new Date(timestamp).getTime(),
+              title: 'Questions Prepared',
+              description: `${questions.length} ${questions.length === 1 ? 'question' : 'questions'} prepared for your next appointment`,
+              dateKey: getLocalDateKey(timestamp),
+              dateLabel: formatEventDate(timestamp),
+              timeStr: formatEventTime(timestamp),
+            }];
+          } catch (error) {
+            console.error('Unexpected error loading current episode questions for dashboard timeline:', error);
+            return [];
+          }
+        };
+
+        const loadConsultations = async (): Promise<PreviewTimelineEvent[]> => {
+          try {
+            const { data, error } = await supabase
+              .from('consultations')
+              .select('id, notes, doctor_name, clinic_name, consultation_at, created_at')
+              .eq('symptom_entry_id', symptomEntryId);
+            if (error) {
+              console.error('Failed to load current episode consultations for dashboard timeline:', error);
+              return [];
+            }
+            return ((data ?? []) as EpisodeConsultationRow[]).map((row) => {
+              const consultationTimestamp = row.consultation_at
+                && !Number.isNaN(new Date(row.consultation_at).getTime())
+                ? row.consultation_at
+                : row.created_at;
+              const description = [row.doctor_name?.trim(), row.clinic_name?.trim()]
+                .filter(Boolean)
+                .join(' • ') || row.notes?.trim() || 'Consultation details recorded';
+              return {
+                id: `consultation-${row.id}`,
+                timestamp: consultationTimestamp,
+                timestampMs: new Date(consultationTimestamp).getTime(),
+                title: 'Appointment Recorded',
+                description,
+                dateKey: getLocalDateKey(consultationTimestamp),
+                dateLabel: formatEventDate(consultationTimestamp),
+                timeStr: formatEventTime(consultationTimestamp),
+              };
+            });
+          } catch (error) {
+            console.error('Unexpected error loading current episode consultations for dashboard timeline:', error);
             return [];
           }
         };
 
         const results = await Promise.all([
-          loadSymptoms(),
-          loadPrescriptions(),
-          loadLabReports(),
           loadFollowUps(),
+          loadQuestions(),
+          loadConsultations(),
         ]);
 
         if (!isMounted) return;
 
-        const combined = results.flat();
+        const combined = [symptomEvent, ...results.flat()];
         combined.sort((a, b) => b.timestampMs - a.timestampMs);
         const latest5 = combined.slice(0, 5);
         latest5.sort((a, b) => a.timestampMs - b.timestampMs);
@@ -334,19 +426,71 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         if (!isMounted) return;
         console.error('Unexpected error loading dashboard timeline:', error);
         setTimelineEvents([]);
-      } finally {
-        if (isMounted) setIsLoadingTimeline(false);
       }
     };
 
-    void loadLatestSymptom();
-    void loadLatestFollowUp();
-    void loadDashboardTimeline();
+    setLatestFollowUp(null);
+    setTimelineEvents([]);
+    setLatestFollowUpError(null);
+
+    if (isLoadingCurrentEpisode) {
+      setIsLoadingFollowUp(true);
+      setIsLoadingTimeline(true);
+    } else if (currentEpisodeError || !currentEpisode) {
+      setIsLoadingFollowUp(false);
+      setIsLoadingTimeline(false);
+    } else {
+      setIsLoadingFollowUp(true);
+      setIsLoadingTimeline(true);
+      void Promise.all([loadLatestFollowUp(), loadDashboardTimeline()]).finally(() => {
+        if (isMounted) {
+          setIsLoadingFollowUp(false);
+          setIsLoadingTimeline(false);
+        }
+      });
+    }
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentEpisode, currentEpisodeError, isLoadingCurrentEpisode]);
+
+  const handleCompleteEpisode = async () => {
+    if (!currentEpisode || !userId || isCompletingEpisode) return;
+
+    setIsCompletingEpisode(true);
+    setCompleteEpisodeError(null);
+
+    try {
+      const { data: completedEpisode, error } = await supabase
+        .from('health_episodes')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', currentEpisode.id)
+        .eq('user_id', userId)
+        .select('id')
+        .maybeSingle();
+
+      if (error || !completedEpisode) {
+        console.error('Failed to complete health episode:', error ?? {
+          episodeId: currentEpisode.id,
+          reason: 'No matching episode was updated.',
+        });
+        setCompleteEpisodeError('Nura couldn’t complete this episode. Please try again.');
+        return;
+      }
+
+      setShowCompleteEpisodeConfirmation(false);
+      setEpisodeRefreshKey((key) => key + 1);
+    } catch (error) {
+      console.error('Unexpected error completing health episode:', error);
+      setCompleteEpisodeError('Nura couldn’t complete this episode. Please try again.');
+    } finally {
+      setIsCompletingEpisode(false);
+    }
+  };
 
   const renderNavList = (items: NavItem[]) => (
     <ul className="space-y-1.5">
@@ -532,7 +676,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               }}
               className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight"
             >
-              {getGreeting()}, Divyanshu.
+              {greeting}{firstName ? `, ${firstName}` : ''}.
             </motion.h1>
 
             {/* 2. Welcome back / Contextual Subtitle */}
@@ -546,9 +690,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               }}
               className="font-sans text-lg sm:text-xl text-nuraTextSecondary font-medium"
             >
-              {entryMode === 'new' 
-                ? "Let's prepare for your consultation." 
-                : "Welcome back. Here's everything from your previous visit."}
+              Here’s where things stand with your health today.
             </motion.p>
 
             {/* 3. Subtle Date */}
@@ -568,9 +710,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           {/* DASHBOARD SECTIONS (UNDERNEATH GREETING) */}
           <div className="space-y-6">
-            {/* TOP ROW: Symptoms Recorded (larger card) & Record Appointment (smaller card) */}
+            {/* TOP ROW: Current Health Episode (larger card) & Record Appointment (smaller card) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* CARD 1: Symptoms Recorded (Larger card - span 7) */}
+              {/* CARD 1: Current Health Episode (Larger card - span 7) */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -580,20 +722,31 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-heading font-bold text-lg text-nuraText">
-                      Symptoms Recorded
+                      Current Health Episode
                     </h3>
                   </div>
 
-                  {isLoadingSymptoms ? (
-                    <div className="py-10 text-center">
+                  {isLoadingCurrentEpisode ? (
+                    <div className="py-10 text-center" aria-busy="true">
                       <p className="text-sm font-medium text-nuraTextSecondary">
-                        Loading symptoms...
+                        Loading current health episode...
                       </p>
                     </div>
-                  ) : latestSymptom ? (
+                  ) : currentEpisodeError ? (
+                    <div className="py-10 text-center space-y-3" role="alert">
+                      <p className="text-sm font-medium text-red-700">
+                        {currentEpisodeError}
+                      </p>
+                    </div>
+                  ) : currentEpisode ? (
                     <div className="space-y-6">
-                      <div className="text-xs font-semibold text-nuraTextSecondary/70 tracking-wide uppercase">
-                        {new Date(latestSymptom.created_at).toLocaleString()}
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-xs font-semibold text-nuraTextSecondary/70 tracking-wide">
+                          Started {new Date(currentEpisode.started_at).toLocaleString()}
+                        </div>
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                          Status: Active
+                        </span>
                       </div>
 
                       <div className="space-y-3 bg-gray-50/60 p-5 rounded-2xl border border-gray-100/80">
@@ -601,7 +754,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                           Symptoms
                         </div>
                         <p className="font-sans text-base sm:text-lg text-nuraText font-normal leading-relaxed whitespace-pre-line">
-                          {latestSymptom.symptoms}
+                          {currentEpisode.initialSymptom.symptoms}
                         </p>
                       </div>
 
@@ -611,7 +764,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             Severity
                           </span>
                           <div className="font-heading font-bold text-xl text-nuraText">
-                            {latestSymptom.severity} <span className="text-sm font-normal text-nuraTextSecondary">/ 10</span>
+                            {currentEpisode.initialSymptom.severity} <span className="text-sm font-normal text-nuraTextSecondary">/ 10</span>
                           </div>
                         </div>
 
@@ -620,33 +773,104 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             Duration
                           </span>
                           <div className="font-heading font-bold text-xl text-nuraText">
-                            {latestSymptom.duration}
+                            {currentEpisode.initialSymptom.duration}
                           </div>
                         </div>
                       </div>
+
+                      <AnimatePresence initial={false}>
+                        {showCompleteEpisodeConfirmation && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 space-y-4">
+                              <div className="space-y-1.5">
+                                <p className="text-sm font-bold text-nuraText">
+                                  Mark this health episode as complete?
+                                </p>
+                                <p className="text-xs leading-relaxed text-nuraTextSecondary">
+                                  Your symptoms, consultations, questions, prescriptions, lab reports, and follow-ups will remain in your Health Timeline.
+                                </p>
+                              </div>
+
+                              {completeEpisodeError && (
+                                <p className="text-xs font-semibold text-red-700" role="alert">
+                                  {completeEpisodeError}
+                                </p>
+                              )}
+
+                              <div className="flex flex-wrap justify-end gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowCompleteEpisodeConfirmation(false);
+                                    setCompleteEpisodeError(null);
+                                  }}
+                                  disabled={isCompletingEpisode}
+                                  className="px-4 py-2 text-sm font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors disabled:opacity-50"
+                                >
+                                  Keep Active
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleCompleteEpisode()}
+                                  disabled={isCompletingEpisode}
+                                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {isCompletingEpisode ? 'Completing...' : 'Complete Episode'}
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   ) : (
-                    <div className="py-10 text-center space-y-3">
-                      <p className="text-sm font-medium text-nuraTextSecondary">
-                        No symptoms recorded yet.
+                    <div className="py-8 text-center space-y-4">
+                      <p className="font-heading text-xl font-bold text-nuraText">
+                        How are you feeling today?
                       </p>
-                      <p className="text-xs text-nuraTextSecondary/70 max-w-xs mx-auto">
-                        Record how you're feeling to keep your care team informed.
+                      <p className="text-sm text-nuraTextSecondary max-w-sm mx-auto leading-relaxed">
+                        You don&apos;t have an active health episode. Record a new health concern whenever you need to.
                       </p>
+                      <button
+                        type="button"
+                        onClick={onStartNewIllness}
+                        className="inline-flex items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 transition-colors"
+                      >
+                        Start New Episode
+                      </button>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-6 mt-6 border-t border-gray-100/80 flex items-center justify-between">
-                  <a
-                    href="#full-entry"
-                    onClick={(e) => e.preventDefault()}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
-                  >
-                    <span>View Full Entry</span>
-                    <span className="transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">→</span>
-                  </a>
-                </div>
+                {currentEpisode && !isLoadingCurrentEpisode && !currentEpisodeError && (
+                  <div className="pt-6 mt-6 border-t border-gray-100/80 flex flex-wrap items-center justify-between gap-3">
+                    <a
+                      href="#full-entry"
+                      onClick={(e) => e.preventDefault()}
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
+                    >
+                      <span>View Full Entry</span>
+                      <span className="transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">→</span>
+                    </a>
+                    {!showCompleteEpisodeConfirmation && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCompleteEpisodeError(null);
+                          setShowCompleteEpisodeConfirmation(true);
+                        }}
+                        className="text-sm font-semibold text-nuraTextSecondary hover:text-primary transition-colors"
+                      >
+                        Complete Episode
+                      </button>
+                    )}
+                  </div>
+                )}
               </motion.div>
 
               {/* CARD 2: Record Appointment (Smaller card - span 5) */}
@@ -690,6 +914,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <div className="py-8 text-center" aria-busy="true">
                   <p className="text-sm font-medium text-nuraTextSecondary">Loading latest follow-up...</p>
                 </div>
+              ) : currentEpisodeError ? (
+                <div className="py-8 text-center" role="alert">
+                  <p className="text-sm font-medium text-red-700">Follow-up information is unavailable right now.</p>
+                </div>
+              ) : latestFollowUpError ? (
+                <div className="py-8 text-center" role="alert">
+                  <p className="text-sm font-medium text-red-700">{latestFollowUpError}</p>
+                </div>
               ) : latestFollowUp ? (
                 <div className="space-y-5">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
@@ -726,9 +958,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                   )}
                 </div>
+              ) : currentEpisode ? (
+                <div className="py-8 text-center space-y-2">
+                  <p className="text-sm font-medium text-nuraText">No follow-up recorded yet.</p>
+                  <p className="text-xs text-nuraTextSecondary/70">
+                    Once you record a follow-up for this episode, it will appear here.
+                  </p>
+                </div>
               ) : (
-                <div className="py-8 text-center">
-                  <p className="text-sm font-medium text-nuraTextSecondary">No follow-up recorded yet.</p>
+                <div className="py-8 text-center space-y-2">
+                  <p className="text-sm font-medium text-nuraText">No active follow-up</p>
+                  <p className="text-xs text-nuraTextSecondary/70">
+                    Follow-ups will appear here once you start tracking a health episode.
+                  </p>
                 </div>
               )}
 
@@ -757,7 +999,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     Health Timeline
                   </h3>
                   <p className="text-xs text-nuraTextSecondary mt-0.5">
-                    Recent healthcare activity in chronological order
+                    Recent activity for your current health episode
                   </p>
                 </div>
               </div>
@@ -765,6 +1007,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               {isLoadingTimeline ? (
                 <div className="py-8 text-center">
                   <p className="text-xs text-nuraTextSecondary">Loading health activity...</p>
+                </div>
+              ) : currentEpisodeError ? (
+                <div className="py-12 text-center" role="alert">
+                  <p className="text-sm font-medium text-red-700">Current episode activity is unavailable right now.</p>
                 </div>
               ) : timelineEvents.length > 0 ? (
                 <div className="space-y-6">
@@ -798,13 +1044,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : currentEpisode ? (
                 <div className="py-12 text-center space-y-3">
                   <p className="text-sm font-medium text-nuraTextSecondary">
-                    No health activity recorded yet.
+                    No activity recorded for this episode yet.
                   </p>
                   <p className="text-xs text-nuraTextSecondary/70 max-w-sm mx-auto">
-                    Your timeline will automatically update as you record symptoms and consult with your care team.
+                    Recent activity will appear here as you add records to this health episode.
+                  </p>
+                </div>
+              ) : (
+                <div className="py-12 text-center space-y-3">
+                  <p className="text-sm font-medium text-nuraText">
+                    No active episode activity
+                  </p>
+                  <p className="text-xs text-nuraTextSecondary/70 max-w-sm mx-auto">
+                    Start a new health episode to see its recent activity here.
                   </p>
                 </div>
               )}

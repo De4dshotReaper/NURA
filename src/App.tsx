@@ -26,6 +26,11 @@ interface PreviousSymptomEntry {
   created_at: string;
 }
 
+interface PersistedSymptomEntry {
+  id: string;
+  created_at: string;
+}
+
 interface SymptomEpisodeSelectionProps {
   onSelect: (id: string) => void;
   onBack: () => void;
@@ -159,6 +164,7 @@ export const App: React.FC = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSavingSymptoms, setIsSavingSymptoms] = useState(false);
   const [symptomSaveError, setSymptomSaveError] = useState<string | null>(null);
+  const [persistedSymptomEntry, setPersistedSymptomEntry] = useState<PersistedSymptomEntry | null>(null);
   const [selectedSymptomEntryId, setSelectedSymptomEntryId] = useState<string | null>(null);
   const [isSavingFollowUp, setIsSavingFollowUp] = useState(false);
   const [followUpSaveError, setFollowUpSaveError] = useState<string | null>(null);
@@ -185,26 +191,65 @@ export const App: React.FC = () => {
     setIsSavingSymptoms(true);
     setSymptomSaveError(null);
 
-    try {
-      const { error } = await supabase.from('symptom_entries').insert({
-        user_id: userId,
-        symptoms: trimmedSymptoms,
-        severity: severityScore,
-        duration: trimmedDuration,
-      });
+    let symptomEntry = persistedSymptomEntry;
 
-      if (error) {
-        console.error('Failed to insert symptom entry into Supabase:', error);
-        setSymptomSaveError('Failed to save symptom details. Please try again.');
-        setIsSavingSymptoms(false);
-        return;
+    try {
+      if (!symptomEntry) {
+        const { data, error } = await supabase
+          .from('symptom_entries')
+          .insert({
+            user_id: userId,
+            symptoms: trimmedSymptoms,
+            severity: severityScore,
+            duration: trimmedDuration,
+          })
+          .select('id, created_at')
+          .single();
+
+        if (error) {
+          console.error('Failed to insert symptom entry into Supabase:', error);
+          setSymptomSaveError('Failed to save symptom details. Please try again.');
+          return;
+        }
+
+        symptomEntry = data as PersistedSymptomEntry;
+        setPersistedSymptomEntry(symptomEntry);
       }
 
-      setIsSavingSymptoms(false);
+      const { error: episodeInsertError } = await supabase.from('health_episodes').insert({
+        user_id: userId,
+        initial_symptom_entry_id: symptomEntry.id,
+        started_at: symptomEntry.created_at,
+      });
+
+      if (episodeInsertError) {
+        console.error('Failed to insert health episode into Supabase:', episodeInsertError);
+
+        const { data: existingEpisode, error: episodeLookupError } = await supabase
+          .from('health_episodes')
+          .select('id')
+          .eq('initial_symptom_entry_id', symptomEntry.id)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (episodeLookupError) {
+          console.error('Failed to verify health episode after insert error:', episodeLookupError);
+        }
+
+        if (!existingEpisode) {
+          setSymptomSaveError("Your symptoms were saved, but Nura couldn't finish creating this health episode. Please try again.");
+          return;
+        }
+      }
+
+      setPersistedSymptomEntry(null);
       setCurrentView('consultation-transition');
     } catch (err) {
-      console.error('Unexpected error inserting symptom entry:', err);
-      setSymptomSaveError('An unexpected error occurred while saving.');
+      console.error('Unexpected error saving new illness:', err);
+      setSymptomSaveError(symptomEntry
+        ? "Your symptoms were saved, but Nura couldn't finish creating this health episode. Please try again."
+        : 'An unexpected error occurred while saving.');
+    } finally {
       setIsSavingSymptoms(false);
     }
   };
@@ -221,6 +266,7 @@ export const App: React.FC = () => {
     setDuration(null);
     setIsSavingSymptoms(false);
     setSymptomSaveError(null);
+    setPersistedSymptomEntry(null);
     setCurrentView('next-flow');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -401,6 +447,9 @@ export const App: React.FC = () => {
         questionSymptomEntryId={selectedQuestionSymptomEntryId}
         consultationSymptomEntryId={selectedConsultationSymptomEntryId}
         userId={session.user.id}
+        userFullName={typeof session.user.user_metadata.full_name === 'string'
+          ? session.user.user_metadata.full_name
+          : undefined}
       />
     );
   }
