@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   FileCheck,
   CheckCircle2,
+  HelpCircle,
+  Calendar,
   ChevronRight,
   ArrowDown
 } from 'lucide-react';
@@ -17,11 +19,13 @@ interface TimelineStep {
   id: string;
   timestamp: string;
   title: string;
-  category: 'symptoms' | 'prescription' | 'lab' | 'followup';
+  category: 'symptoms' | 'prescription' | 'lab' | 'followup' | 'questions' | 'consultation';
   description: string;
   details?: string[];
   badge?: string;
   badgeColor?: string;
+  episodeId?: string;
+  linkedSymptomId?: string;
   icon: React.ElementType;
 }
 
@@ -51,6 +55,7 @@ interface LabReportRow {
 
 interface FollowUpRow {
   id: string;
+  symptom_entry_id: string;
   progress: string | null;
   current_symptoms: string | null;
   medicine_compliance: string | null;
@@ -59,6 +64,36 @@ interface FollowUpRow {
   side_effects_text: string | null;
   questions: string | null;
   created_at: string;
+}
+
+interface ConsultationQuestionRow {
+  id: string;
+  symptom_entry_id: string;
+  question: string;
+  source: string;
+  created_at: string;
+}
+
+interface ConsultationRow {
+  id: string;
+  symptom_entry_id: string;
+  notes: string;
+  doctor_name: string | null;
+  clinic_name: string | null;
+  follow_up_recommended: boolean;
+  follow_up_notes: string | null;
+  consultation_at: string | null;
+  created_at: string;
+}
+
+interface ConsultationPrescriptionRow {
+  consultation_id: string;
+  prescription_id: string;
+}
+
+interface ConsultationLabReportRow {
+  consultation_id: string;
+  lab_report_id: string;
 }
 
 interface TimelineGroup {
@@ -138,6 +173,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
             ].filter((detail): detail is string => Boolean(detail)),
           badge: 'Recorded',
           badgeColor: 'bg-blue-50 text-primary border-blue-200/60',
+          episodeId: row.id,
           icon: Activity,
         }));
       } catch (error) {
@@ -216,7 +252,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
       try {
         const { data, error } = await supabase
           .from('follow_up_entries')
-          .select('id, progress, current_symptoms, medicine_compliance, medicine_reason, has_side_effects, side_effects_text, questions, created_at');
+          .select('id, symptom_entry_id, progress, current_symptoms, medicine_compliance, medicine_reason, has_side_effects, side_effects_text, questions, created_at');
         if (error) {
           console.error('Failed to load follow-up entries for health timeline:', error);
           return [];
@@ -250,11 +286,154 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
             details: details.length > 0 ? details : undefined,
             badge: progress || undefined,
             badgeColor: 'bg-teal-50 text-teal-700 border-teal-200/60',
+            episodeId: row.symptom_entry_id,
+            linkedSymptomId: row.symptom_entry_id,
             icon: CheckCircle2,
           };
         });
       } catch (error) {
         console.error('Unexpected error loading follow-up entries for health timeline:', error);
+        return [];
+      }
+    };
+
+    const loadConsultationQuestions = async (): Promise<TimelineStep[]> => {
+      try {
+        const { data, error } = await supabase
+          .from('consultation_questions')
+          .select('id, symptom_entry_id, question, source, created_at')
+          .order('created_at', { ascending: true });
+        if (error) {
+          console.error('Failed to load consultation questions for health timeline:', error);
+          return [];
+        }
+
+        // Until consultation/question-set entities exist, prepared questions are grouped by symptom_entry_id for timeline display.
+        const questionsByEpisode = ((data ?? []) as ConsultationQuestionRow[]).reduce<
+          Map<string, ConsultationQuestionRow[]>
+        >((groups, row) => {
+          const episodeQuestions = groups.get(row.symptom_entry_id) ?? [];
+          episodeQuestions.push(row);
+          groups.set(row.symptom_entry_id, episodeQuestions);
+          return groups;
+        }, new Map());
+
+        return Array.from(questionsByEpisode.entries()).map(([symptomEntryId, questions]) => ({
+          id: `questions-${symptomEntryId}`,
+          timestamp: questions[0].created_at,
+          title: 'Questions Prepared',
+          category: 'questions' as const,
+          description: 'Questions prepared for your next appointment',
+          details: questions.map((row) => row.question),
+          badge: `${questions.length} ${questions.length === 1 ? 'Question' : 'Questions'}`,
+          badgeColor: 'bg-amber-50 text-amber-700 border-amber-200/60',
+          episodeId: symptomEntryId,
+          linkedSymptomId: symptomEntryId,
+          icon: HelpCircle,
+        }));
+      } catch (error) {
+        console.error('Unexpected error loading consultation questions for health timeline:', error);
+        return [];
+      }
+    };
+
+    const loadConsultations = async (): Promise<TimelineStep[]> => {
+      try {
+        const { data, error } = await supabase
+          .from('consultations')
+          .select('id, symptom_entry_id, notes, doctor_name, clinic_name, follow_up_recommended, follow_up_notes, consultation_at, created_at');
+        if (error) {
+          console.error('Failed to load consultations for health timeline:', error);
+          return [];
+        }
+
+        const consultations = (data ?? []) as ConsultationRow[];
+        if (consultations.length === 0) return [];
+
+        const consultationIds = consultations.map((consultation) => consultation.id);
+        const prescriptionCounts = new Map<string, number>();
+        const labReportCounts = new Map<string, number>();
+        let prescriptionCountsAvailable = true;
+        let labReportCountsAvailable = true;
+
+        const [prescriptionLinksResult, labReportLinksResult] = await Promise.allSettled([
+          supabase
+            .from('consultation_prescriptions')
+            .select('consultation_id, prescription_id')
+            .in('consultation_id', consultationIds),
+          supabase
+            .from('consultation_lab_reports')
+            .select('consultation_id, lab_report_id')
+            .in('consultation_id', consultationIds),
+        ]);
+
+        if (prescriptionLinksResult.status === 'rejected') {
+          console.error('Unexpected error loading consultation prescription links for health timeline:', prescriptionLinksResult.reason);
+          prescriptionCountsAvailable = false;
+        } else if (prescriptionLinksResult.value.error) {
+          console.error('Failed to load consultation prescription links for health timeline:', prescriptionLinksResult.value.error);
+          prescriptionCountsAvailable = false;
+        } else {
+          ((prescriptionLinksResult.value.data ?? []) as ConsultationPrescriptionRow[]).forEach((row) => {
+            prescriptionCounts.set(row.consultation_id, (prescriptionCounts.get(row.consultation_id) ?? 0) + 1);
+          });
+        }
+
+        if (labReportLinksResult.status === 'rejected') {
+          console.error('Unexpected error loading consultation lab report links for health timeline:', labReportLinksResult.reason);
+          labReportCountsAvailable = false;
+        } else if (labReportLinksResult.value.error) {
+          console.error('Failed to load consultation lab report links for health timeline:', labReportLinksResult.value.error);
+          labReportCountsAvailable = false;
+        } else {
+          ((labReportLinksResult.value.data ?? []) as ConsultationLabReportRow[]).forEach((row) => {
+            labReportCounts.set(row.consultation_id, (labReportCounts.get(row.consultation_id) ?? 0) + 1);
+          });
+        }
+
+        return consultations.map((consultation) => {
+          const notes = consultation.notes?.trim() ?? '';
+          const doctorName = consultation.doctor_name?.trim() ?? '';
+          const clinicName = consultation.clinic_name?.trim() ?? '';
+          const followUpNotes = consultation.follow_up_notes?.trim() ?? '';
+          const consultationTime = consultation.consultation_at
+            && !Number.isNaN(new Date(consultation.consultation_at).getTime())
+            ? consultation.consultation_at
+            : consultation.created_at;
+          const description = [doctorName, clinicName].filter(Boolean).join(' • ')
+            || 'Consultation details recorded';
+          const prescriptionCount = prescriptionCounts.get(consultation.id) ?? 0;
+          const labReportCount = labReportCounts.get(consultation.id) ?? 0;
+          const details = [
+            notes ? `Notes: ${notes}` : null,
+            doctorName ? `Doctor: ${doctorName}` : null,
+            clinicName ? `Clinic: ${clinicName}` : null,
+            `Follow-up recommended: ${consultation.follow_up_recommended ? 'Yes' : 'No'}`,
+            followUpNotes ? `Follow-up notes: ${followUpNotes}` : null,
+            prescriptionCountsAvailable
+              ? `${prescriptionCount} ${prescriptionCount === 1 ? 'prescription' : 'prescriptions'} attached`
+              : null,
+            labReportCountsAvailable
+              ? `${labReportCount} ${labReportCount === 1 ? 'lab report' : 'lab reports'} attached`
+              : null,
+          ].filter((detail): detail is string => Boolean(detail));
+
+          return {
+            id: `consultation-${consultation.id}`,
+            timestamp: consultationTime,
+            title: 'Appointment Recorded',
+            category: 'consultation' as const,
+            description,
+            details,
+            badge: 'Consultation',
+            badgeColor: 'bg-violet-50 text-violet-700 border-violet-200/60',
+            episodeId: consultation.symptom_entry_id,
+            linkedSymptomId: consultation.symptom_entry_id,
+            icon: Calendar,
+          };
+        });
+      } catch (error) {
+        console.error('Unexpected error loading consultations for health timeline:', error);
         return [];
       }
     };
@@ -265,6 +444,8 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
         loadPrescriptions(),
         loadLabReports(),
         loadFollowUps(),
+        loadConsultationQuestions(),
+        loadConsultations(),
       ]);
       if (!isMounted) return;
       setEvents(results.flat());
@@ -299,6 +480,12 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
     ? timelineGroups
     : timelineGroups.filter((group) => group.dateKey === selectedFilter);
 
+  const symptomEventsByEpisodeId = new Map(
+    events
+      .filter((event) => event.category === 'symptoms' && event.episodeId)
+      .map((event) => [event.episodeId as string, event])
+  );
+
   const toggleExpand = (id: string) => {
     setExpandedId(prev => (prev === id ? null : id));
   };
@@ -306,6 +493,22 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
   const renderTimelineItem = (step: TimelineStep, isLastInGroup: boolean) => {
     const Icon = step.icon;
     const isExpanded = expandedId === step.id;
+    const linkedSymptom = step.linkedSymptomId
+      ? symptomEventsByEpisodeId.get(step.linkedSymptomId)
+      : undefined;
+    const relationshipLabel = step.category === 'symptoms'
+      ? 'Episode'
+      : linkedSymptom
+        ? step.category === 'questions' || step.category === 'consultation'
+          ? 'For episode'
+          : 'Follow-up to episode'
+        : null;
+    const displayDetails = linkedSymptom && step.category === 'followup'
+      ? [
+          ...(step.details ?? []),
+          `Linked to symptom episode from ${formatDate(linkedSymptom.timestamp)} • ${formatTime(linkedSymptom.timestamp)}`,
+        ]
+      : step.details;
 
     return (
       <React.Fragment key={step.id}>
@@ -333,6 +536,11 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
                       {step.badge}
                     </span>
                   )}
+                  {relationshipLabel && (
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-gray-200/80 bg-gray-50 text-nuraTextSecondary">
+                      {relationshipLabel}
+                    </span>
+                  )}
                 </div>
 
                 <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
@@ -352,7 +560,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
           </div>
 
           {/* Expanded Details */}
-          {isExpanded && step.details && (
+          {isExpanded && displayDetails && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -363,7 +571,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
                 Event Details
               </div>
               <ul className="space-y-1.5">
-                {step.details.map((detail, idx) => (
+                {displayDetails.map((detail, idx) => (
                   <li key={idx} className="text-xs sm:text-sm text-nuraText flex items-start gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1.5" />
                     <span>{detail}</span>

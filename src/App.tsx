@@ -26,12 +26,13 @@ interface PreviousSymptomEntry {
   created_at: string;
 }
 
-interface FollowUpSelectionProps {
+interface SymptomEpisodeSelectionProps {
   onSelect: (id: string) => void;
   onBack: () => void;
+  purpose: 'follow-up' | 'questions' | 'consultation';
 }
 
-const FollowUpSelection: React.FC<FollowUpSelectionProps> = ({ onSelect, onBack }) => {
+const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSelect, onBack, purpose }) => {
   const [entries, setEntries] = useState<PreviousSymptomEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -49,7 +50,7 @@ const FollowUpSelection: React.FC<FollowUpSelectionProps> = ({ onSelect, onBack 
         if (!isMounted) return;
 
         if (error) {
-          console.error('Failed to load symptom entries for follow-up:', error);
+          console.error('Failed to load symptom entries for episode selection:', error);
           setErrorMessage('Unable to load previous symptom entries. Please try again.');
           return;
         }
@@ -57,7 +58,7 @@ const FollowUpSelection: React.FC<FollowUpSelectionProps> = ({ onSelect, onBack 
         setEntries((data ?? []) as PreviousSymptomEntry[]);
       } catch (error) {
         if (!isMounted) return;
-        console.error('Unexpected error loading symptom entries for follow-up:', error);
+        console.error('Unexpected error loading symptom entries for episode selection:', error);
         setErrorMessage('Unable to load previous symptom entries. Please try again.');
       } finally {
         if (isMounted) setIsLoading(false);
@@ -82,11 +83,23 @@ const FollowUpSelection: React.FC<FollowUpSelectionProps> = ({ onSelect, onBack 
         </button>
 
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Follow-up Visit</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            {purpose === 'follow-up'
+              ? 'Follow-up Visit'
+              : purpose === 'questions'
+                ? 'Questions Before Appointment'
+                : 'Record Appointment'}
+          </p>
           <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-nuraText tracking-tight">
             Choose a previous symptom entry
           </h1>
-          <p className="text-nuraTextSecondary">Select the illness you want to follow up on.</p>
+          <p className="text-nuraTextSecondary">
+            {purpose === 'follow-up'
+              ? 'Select the illness you want to follow up on.'
+              : purpose === 'questions'
+                ? 'Select the symptom episode you want to prepare questions for.'
+                : 'Select the symptom episode this appointment belongs to.'}
+          </p>
         </div>
 
         {isLoading ? (
@@ -137,7 +150,7 @@ const FollowUpSelection: React.FC<FollowUpSelectionProps> = ({ onSelect, onBack 
 };
 
 export const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'login' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard' | 'follow-up-selection' | 'follow-up-intake'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'login' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard' | 'follow-up-selection' | 'follow-up-intake' | 'questions-selection' | 'consultation-selection'>('landing');
   const [journeyType, setJourneyType] = useState<'new-illness' | 'follow-up' | null>(null);
   const [symptoms, setSymptoms] = useState<string>('');
   const [severityScore, setSeverityScore] = useState<number | null>(null);
@@ -149,6 +162,8 @@ export const App: React.FC = () => {
   const [selectedSymptomEntryId, setSelectedSymptomEntryId] = useState<string | null>(null);
   const [isSavingFollowUp, setIsSavingFollowUp] = useState(false);
   const [followUpSaveError, setFollowUpSaveError] = useState<string | null>(null);
+  const [selectedQuestionSymptomEntryId, setSelectedQuestionSymptomEntryId] = useState<string | null>(null);
+  const [selectedConsultationSymptomEntryId, setSelectedConsultationSymptomEntryId] = useState<string | null>(null);
 
   const handleConfirmNewIllness = async () => {
     if (isSavingSymptoms) return;
@@ -266,6 +281,18 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleStartQuestions = () => {
+    setSelectedQuestionSymptomEntryId(null);
+    setCurrentView('questions-selection');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStartConsultation = () => {
+    setSelectedConsultationSymptomEntryId(null);
+    setCurrentView('consultation-selection');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -296,7 +323,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     const requiresAuthentication = currentView === 'dashboard'
       || currentView === 'follow-up-selection'
-      || currentView === 'follow-up-intake';
+      || currentView === 'follow-up-intake'
+      || currentView === 'questions-selection'
+      || currentView === 'consultation-selection';
 
     if (!isAuthLoading && requiresAuthentication && !session) {
       setCurrentView('login');
@@ -355,18 +384,64 @@ export const App: React.FC = () => {
         entryMode={journeyType === 'new-illness' ? 'new' : 'follow-up'}
         onStartNewIllness={handleStartNewIllness}
         onStartFollowUp={handleStartFollowUp}
+        onStartQuestions={handleStartQuestions}
+        onCloseQuestions={() => setSelectedQuestionSymptomEntryId(null)}
+        onStartConsultation={handleStartConsultation}
+        onCloseConsultation={() => setSelectedConsultationSymptomEntryId(null)}
+        onConsultationSaved={() => {
+          setSelectedConsultationSymptomEntryId(null);
+          setCurrentView('dashboard');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        initialActiveItem={selectedQuestionSymptomEntryId
+          ? 'questions'
+          : selectedConsultationSymptomEntryId
+            ? 'appointment'
+            : 'dashboard'}
+        questionSymptomEntryId={selectedQuestionSymptomEntryId}
+        consultationSymptomEntryId={selectedConsultationSymptomEntryId}
+        userId={session.user.id}
       />
     );
   }
 
   if (currentView === 'follow-up-selection' && session) {
     return (
-      <FollowUpSelection
+      <SymptomEpisodeSelection
+        purpose="follow-up"
         onBack={() => setCurrentView('dashboard')}
         onSelect={(id) => {
           setSelectedSymptomEntryId(id);
           setFollowUpSaveError(null);
           setCurrentView('follow-up-intake');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+    );
+  }
+
+  if (currentView === 'questions-selection' && session) {
+    return (
+      <SymptomEpisodeSelection
+        purpose="questions"
+        onBack={() => setCurrentView('dashboard')}
+        onSelect={(id) => {
+          setSelectedQuestionSymptomEntryId(id);
+          setCurrentView('dashboard');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+    );
+  }
+
+  if (currentView === 'consultation-selection' && session) {
+    return (
+      <SymptomEpisodeSelection
+        purpose="consultation"
+        onBack={() => setCurrentView('dashboard')}
+        onSelect={(id) => {
+          setSelectedConsultationSymptomEntryId(id);
+          setCurrentView('dashboard');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />

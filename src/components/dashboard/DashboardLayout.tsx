@@ -39,6 +39,38 @@ interface FollowUpEntry {
   created_at: string;
 }
 
+interface PreviewTimelineEvent {
+  id: string;
+  timestamp: string;
+  timestampMs: number;
+  title: string;
+  description: string;
+  dateKey: string;
+  dateLabel: string;
+  timeStr: string;
+}
+
+const getLocalDateKey = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatEventDate = (timestamp: string): string =>
+  new Date(timestamp).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+const formatEventTime = (timestamp: string): string =>
+  new Date(timestamp).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
 const mainNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'new-illness', label: 'New Illness', icon: Stethoscope },
@@ -76,21 +108,39 @@ interface DashboardLayoutProps {
   entryMode?: 'new' | 'follow-up';
   onStartNewIllness?: () => void;
   onStartFollowUp?: () => void;
+  onStartQuestions?: () => void;
+  onCloseQuestions?: () => void;
+  onStartConsultation?: () => void;
+  onCloseConsultation?: () => void;
+  onConsultationSaved?: () => void;
+  initialActiveItem?: 'dashboard' | 'questions' | 'appointment';
+  questionSymptomEntryId?: string | null;
+  consultationSymptomEntryId?: string | null;
+  userId?: string;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   entryMode = 'follow-up',
   onStartNewIllness,
   onStartFollowUp,
+  onStartQuestions,
+  onCloseQuestions,
+  onStartConsultation,
+  onCloseConsultation,
+  onConsultationSaved,
+  initialActiveItem = 'dashboard',
+  questionSymptomEntryId = null,
+  consultationSymptomEntryId = null,
+  userId,
 }) => {
-  const [activeItem, setActiveItem] = useState<string>('dashboard');
+  const [activeItem, setActiveItem] = useState<string>(initialActiveItem);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [hasAppointment, setHasAppointment] = useState<boolean>(false);
   const [latestSymptom, setLatestSymptom] = useState<SymptomEntry | null>(null);
   const [isLoadingSymptoms, setIsLoadingSymptoms] = useState<boolean>(true);
   const [latestFollowUp, setLatestFollowUp] = useState<FollowUpEntry | null>(null);
   const [isLoadingFollowUp, setIsLoadingFollowUp] = useState<boolean>(true);
-  const [hasTimeline, setHasTimeline] = useState<boolean>(true);
+  const [timelineEvents, setTimelineEvents] = useState<PreviewTimelineEvent[]>([]);
+  const [isLoadingTimeline, setIsLoadingTimeline] = useState<boolean>(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -147,8 +197,151 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       }
     };
 
+    const loadDashboardTimeline = async () => {
+      try {
+        const loadSymptoms = async (): Promise<PreviewTimelineEvent[]> => {
+          try {
+            const { data, error } = await supabase
+              .from('symptom_entries')
+              .select('id, symptoms, severity, duration, created_at');
+            if (error) {
+              console.error('Failed to load symptom entries for dashboard timeline:', error);
+              return [];
+            }
+            return (data || []).map((row: any) => ({
+              id: `symptom-${row.id}`,
+              timestamp: row.created_at,
+              timestampMs: new Date(row.created_at).getTime(),
+              title: 'Symptoms Recorded',
+              description: row.symptoms || 'Symptoms recorded',
+              dateKey: getLocalDateKey(row.created_at),
+              dateLabel: formatEventDate(row.created_at),
+              timeStr: formatEventTime(row.created_at),
+            }));
+          } catch (error) {
+            console.error('Unexpected error loading symptom entries for dashboard timeline:', error);
+            return [];
+          }
+        };
+
+        const loadPrescriptions = async (): Promise<PreviewTimelineEvent[]> => {
+          try {
+            const { data, error } = await supabase
+              .from('prescriptions')
+              .select('id, file_name, file_type, medicines, uploaded_at');
+            if (error) {
+              console.error('Failed to load prescriptions for dashboard timeline:', error);
+              return [];
+            }
+            return (data || []).map((row: any) => {
+              const medicines = Array.isArray(row.medicines) ? row.medicines : [];
+              const medNames = medicines
+                .map((m: any) => m?.name || m?.medicineName)
+                .filter(Boolean)
+                .join(', ');
+              const desc = medNames ? `${row.file_name} (${medNames})` : row.file_name;
+              return {
+                id: `prescription-${row.id}`,
+                timestamp: row.uploaded_at,
+                timestampMs: new Date(row.uploaded_at).getTime(),
+                title: 'Prescription Added',
+                description: desc || 'Prescription uploaded',
+                dateKey: getLocalDateKey(row.uploaded_at),
+                dateLabel: formatEventDate(row.uploaded_at),
+                timeStr: formatEventTime(row.uploaded_at),
+              };
+            });
+          } catch (error) {
+            console.error('Unexpected error loading prescriptions for dashboard timeline:', error);
+            return [];
+          }
+        };
+
+        const loadLabReports = async (): Promise<PreviewTimelineEvent[]> => {
+          try {
+            const { data, error } = await supabase
+              .from('lab_reports')
+              .select('id, file_name, report_type, uploaded_at');
+            if (error) {
+              console.error('Failed to load lab reports for dashboard timeline:', error);
+              return [];
+            }
+            return (data || []).map((row: any) => {
+              const desc = row.report_type ? `${row.report_type} — ${row.file_name}` : row.file_name;
+              return {
+                id: `lab-${row.id}`,
+                timestamp: row.uploaded_at,
+                timestampMs: new Date(row.uploaded_at).getTime(),
+                title: 'Lab Report Uploaded',
+                description: desc || 'Lab report uploaded',
+                dateKey: getLocalDateKey(row.uploaded_at),
+                dateLabel: formatEventDate(row.uploaded_at),
+                timeStr: formatEventTime(row.uploaded_at),
+              };
+            });
+          } catch (error) {
+            console.error('Unexpected error loading lab reports for dashboard timeline:', error);
+            return [];
+          }
+        };
+
+        const loadFollowUps = async (): Promise<PreviewTimelineEvent[]> => {
+          try {
+            const { data, error } = await supabase
+              .from('follow_up_entries')
+              .select('id, current_symptoms, progress, created_at');
+            if (error) {
+              console.error('Failed to load follow-up entries for dashboard timeline:', error);
+              return [];
+            }
+            return (data || []).map((row: any) => {
+              const currentSymptoms = row.current_symptoms?.trim() ?? '';
+              const progress = row.progress?.trim() ?? '';
+              const desc = currentSymptoms || progress || 'Follow-up information recorded.';
+              return {
+                id: `followup-${row.id}`,
+                timestamp: row.created_at,
+                timestampMs: new Date(row.created_at).getTime(),
+                title: 'Follow-up Recorded',
+                description: desc,
+                dateKey: getLocalDateKey(row.created_at),
+                dateLabel: formatEventDate(row.created_at),
+                timeStr: formatEventTime(row.created_at),
+              };
+            });
+          } catch (error) {
+            console.error('Unexpected error loading follow-up entries for dashboard timeline:', error);
+            return [];
+          }
+        };
+
+        const results = await Promise.all([
+          loadSymptoms(),
+          loadPrescriptions(),
+          loadLabReports(),
+          loadFollowUps(),
+        ]);
+
+        if (!isMounted) return;
+
+        const combined = results.flat();
+        combined.sort((a, b) => b.timestampMs - a.timestampMs);
+        const latest5 = combined.slice(0, 5);
+        latest5.sort((a, b) => a.timestampMs - b.timestampMs);
+
+        setTimelineEvents(latest5);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Unexpected error loading dashboard timeline:', error);
+        setTimelineEvents([]);
+      } finally {
+        if (isMounted) setIsLoadingTimeline(false);
+      }
+    };
+
     void loadLatestSymptom();
     void loadLatestFollowUp();
+    void loadDashboardTimeline();
 
     return () => {
       isMounted = false;
@@ -171,6 +364,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 } else if (item.id === 'follow-up') {
                   setMobileMenuOpen(false);
                   onStartFollowUp?.();
+                } else if (item.id === 'questions') {
+                  setMobileMenuOpen(false);
+                  onStartQuestions?.();
                 } else {
                   setActiveItem(item.id);
                   setMobileMenuOpen(false);
@@ -303,10 +499,25 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <LabReportExplanationPage onBackToDashboard={() => setActiveItem('dashboard')} />
         ) : activeItem === 'health-timeline' ? (
           <HealthTimelinePage onBackToDashboard={() => setActiveItem('dashboard')} />
-        ) : activeItem === 'questions' ? (
-          <QuestionsPage onBackToDashboard={() => setActiveItem('dashboard')} />
-        ) : activeItem === 'appointment' ? (
-          <AppointmentDetailsPage onBackToDashboard={() => setActiveItem('dashboard')} />
+        ) : activeItem === 'questions' && questionSymptomEntryId && userId ? (
+          <QuestionsPage
+            symptomEntryId={questionSymptomEntryId}
+            userId={userId}
+            onBackToDashboard={() => {
+              setActiveItem('dashboard');
+              onCloseQuestions?.();
+            }}
+          />
+        ) : activeItem === 'appointment' && consultationSymptomEntryId && userId ? (
+          <AppointmentDetailsPage
+            symptomEntryId={consultationSymptomEntryId}
+            userId={userId}
+            onBackToDashboard={() => {
+              setActiveItem('dashboard');
+              onCloseConsultation?.();
+            }}
+            onSaved={onConsultationSaved}
+          />
         ) : (
           <div className="max-w-4xl mr-auto space-y-10">
           {/* Top Greeting Section */}
@@ -357,7 +568,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           {/* DASHBOARD SECTIONS (UNDERNEATH GREETING) */}
           <div className="space-y-6">
-            {/* TOP ROW: Symptoms Recorded (larger card) & Upcoming Appointment (smaller card) */}
+            {/* TOP ROW: Symptoms Recorded (larger card) & Record Appointment (smaller card) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* CARD 1: Symptoms Recorded (Larger card - span 7) */}
               <motion.div
@@ -438,94 +649,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
               </motion.div>
 
-              {/* CARD 2: Upcoming Appointment (Smaller card - span 5) */}
+              {/* CARD 2: Record Appointment (Smaller card - span 5) */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                onClick={() => setActiveItem('appointment')}
+                onClick={onStartConsultation}
                 className="lg:col-span-5 bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] transition-all duration-300 flex flex-col justify-between cursor-pointer"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-heading font-bold text-lg text-nuraText">
-                      Upcoming Appointment
+                      Record Appointment
                     </h3>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setHasAppointment(!hasAppointment);
-                      }}
-                      className="text-[11px] text-nuraTextSecondary/60 hover:text-nuraText transition-colors"
-                      title="Toggle appointment state"
-                    >
-                      {hasAppointment ? 'Show Empty' : 'Show Scheduled'}
-                    </button>
                   </div>
-
-                  {hasAppointment ? (
-                    <div className="space-y-4 py-2">
-                      <div className="space-y-1">
-                        <div className="text-xs font-semibold text-primary uppercase tracking-wider">
-                          Consultation Follow-up
-                        </div>
-                        <h4 className="font-heading font-bold text-lg text-nuraText">
-                          Dr. Sarah Jenkins
-                        </h4>
-                        <p className="text-xs text-nuraTextSecondary">
-                          General Medicine • City Health Clinic
-                        </p>
-                      </div>
-
-                      <div className="bg-gray-50/60 p-4 rounded-2xl border border-gray-100 space-y-1.5">
-                        <div className="text-xs font-semibold text-nuraTextSecondary uppercase tracking-wider">
-                          Scheduled Date & Time
-                        </div>
-                        <div className="font-heading font-bold text-base text-nuraText">
-                          Thursday, 3 Aug • 10:30 AM
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center space-y-4">
-                      <div className="space-y-1.5">
-                        <p className="text-base font-semibold text-nuraText">
-                          No appointment scheduled.
-                        </p>
-                        <p className="text-xs text-nuraTextSecondary leading-relaxed max-w-xs mx-auto">
-                          Book one after your consultation if needed.
-                        </p>
-                      </div>
-
-                      <div className="pt-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setHasAppointment(true);
-                          }}
-                          className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-nuraText hover:border-primary hover:text-primary transition-all duration-200 cursor-pointer inline-flex items-center gap-2 shadow-2xs"
-                        >
-                          <span>Add Appointment</span>
-                          <span className="text-xs">+</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <div className="py-8 space-y-4">
+                    <p className="text-sm text-nuraTextSecondary leading-relaxed">
+                      Save what happened during a completed consultation and link the health records that belong to it.
+                    </p>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+                      Start recording <span>→</span>
+                    </span>
+                  </div>
                 </div>
-
-                {hasAppointment && (
-                  <div className="pt-6 mt-6 border-t border-gray-100/80">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setHasAppointment(false);
-                      }}
-                      className="text-xs text-nuraTextSecondary hover:text-nuraText transition-colors"
-                    >
-                      Reschedule or cancel appointment
-                    </button>
-                  </div>
-                )}
               </motion.div>
             </div>
 
@@ -614,135 +760,48 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     Recent healthcare activity in chronological order
                   </p>
                 </div>
-                <button
-                  onClick={() => setHasTimeline(!hasTimeline)}
-                  className="text-[11px] text-nuraTextSecondary/60 hover:text-nuraText transition-colors"
-                >
-                  {hasTimeline ? 'Toggle Empty' : 'Show Timeline'}
-                </button>
               </div>
 
-              {hasTimeline ? (
+              {isLoadingTimeline ? (
+                <div className="py-8 text-center">
+                  <p className="text-xs text-nuraTextSecondary">Loading health activity...</p>
+                </div>
+              ) : timelineEvents.length > 0 ? (
                 <div className="space-y-6">
-                  {/* 31 Jul Section */}
-                  <div className="space-y-3">
-                    <div className="text-xs font-bold uppercase tracking-wider text-primary bg-blue-50/80 px-2.5 py-1 rounded-md inline-block">
-                      31 July • Initial Consultation
-                    </div>
-                    <div className="relative pl-6 space-y-2.5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[1px] before:bg-gray-200">
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-primary ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Symptoms Recorded</h4>
-                            <p className="text-xs text-nuraTextSecondary">Headache and throat pain (7/10)</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">7:15 PM</span>
-                        </div>
+                  {timelineEvents.reduce<Array<{ dateKey: string; dateLabel: string; events: PreviewTimelineEvent[] }>>((groups, event) => {
+                    let group = groups.find((g) => g.dateKey === event.dateKey);
+                    if (!group) {
+                      group = { dateKey: event.dateKey, dateLabel: event.dateLabel, events: [] };
+                      groups.push(group);
+                    }
+                    group.events.push(event);
+                    return groups;
+                  }, []).map((group, groupIndex) => (
+                    <div key={group.dateKey} className={`space-y-3 ${groupIndex > 0 ? 'pt-2' : ''}`}>
+                      <div className="text-xs font-bold uppercase tracking-wider text-primary bg-blue-50/80 px-2.5 py-1 rounded-md inline-block">
+                        {group.dateLabel}
                       </div>
-
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-gray-300 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Consultation Summary Generated</h4>
-                            <p className="text-xs text-nuraTextSecondary">Care plan & overview prepared</p>
+                      <div className="relative pl-6 space-y-2.5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[1px] before:bg-gray-200">
+                        {group.events.map((event, eventIndex) => (
+                          <div key={event.id} className="relative flex items-center gap-4">
+                            <div className={`absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 ${groupIndex === 0 && eventIndex === 0 ? 'border-primary' : 'border-gray-300'} ring-4 ring-white`} />
+                            <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
+                              <div>
+                                <h4 className="font-heading font-semibold text-sm text-nuraText">{event.title}</h4>
+                                <p className="text-xs text-nuraTextSecondary">{event.description}</p>
+                              </div>
+                              <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0 ml-3">{event.timeStr}</span>
+                            </div>
                           </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">7:30 PM</span>
-                        </div>
-                      </div>
-
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-gray-300 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Prescription Added</h4>
-                            <p className="text-xs text-nuraTextSecondary">Paracetamol & Amoxicillin prescribed</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">7:35 PM</span>
-                        </div>
-                      </div>
-
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-gray-300 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Lab Report Uploaded</h4>
-                            <p className="text-xs text-nuraTextSecondary">CBC Report analyzed</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">7:45 PM</span>
-                        </div>
-                      </div>
-
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-gray-300 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Follow-up Scheduled</h4>
-                            <p className="text-xs text-nuraTextSecondary">Appointment set for August 3</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">8:00 PM</span>
-                        </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
-
-                  {/* 3 Aug Section */}
-                  <div className="space-y-3 pt-2">
-                    <div className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50/80 px-2.5 py-1 rounded-md inline-block">
-                      3 August • Follow-up Review
-                    </div>
-                    <div className="relative pl-6 space-y-2.5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[1px] before:bg-gray-200">
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-teal-500 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Follow-up Started</h4>
-                            <p className="text-xs text-nuraTextSecondary">Session initiated with Dr. Jenkins</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">10:30 AM</span>
-                        </div>
-                      </div>
-
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-gray-300 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Recovery Progress Recorded</h4>
-                            <p className="text-xs text-nuraTextSecondary">Significant symptom improvement noted</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">10:40 AM</span>
-                        </div>
-                      </div>
-
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-gray-300 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">New Questions Generated</h4>
-                            <p className="text-xs text-nuraTextSecondary">Tailored follow-up questions prepared</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">10:45 AM</span>
-                        </div>
-                      </div>
-
-                      <div className="relative flex items-center gap-4">
-                        <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-gray-300 ring-4 ring-white" />
-                        <div className="flex-1 bg-gray-50/40 py-2 px-3.5 rounded-xl border border-gray-100/80 flex items-center justify-between">
-                          <div>
-                            <h4 className="font-heading font-semibold text-sm text-nuraText">Updated Summary Created</h4>
-                            <p className="text-xs text-nuraTextSecondary">Comprehensive updated health record</p>
-                          </div>
-                          <span className="text-xs font-medium text-nuraTextSecondary/60 shrink-0">11:00 AM</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               ) : (
                 <div className="py-12 text-center space-y-3">
                   <p className="text-sm font-medium text-nuraTextSecondary">
-                    No recent healthcare activity recorded yet.
+                    No health activity recorded yet.
                   </p>
                   <p className="text-xs text-nuraTextSecondary/70 max-w-sm mx-auto">
                     Your timeline will automatically update as you record symptoms and consult with your care team.
@@ -782,7 +841,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  onClick={() => setActiveItem('questions')}
+                  onClick={onStartQuestions}
                   className="bg-white rounded-[1.75rem] p-6 sm:p-7 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
                 >
                   <div className="space-y-4">
