@@ -584,8 +584,8 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
 
         {/* Arrow Down Connector */}
         {!isLastInGroup && (
-          <div className="flex justify-center my-2 text-primary/40">
-            <ArrowDown className="w-5 h-5 animate-bounce" style={{ animationDuration: '3s' }} />
+          <div className="flex justify-center py-3 text-primary/45">
+            <ArrowDown className="w-6 h-6 animate-bounce" style={{ animationDuration: '3s' }} />
           </div>
         )}
       </React.Fragment>
@@ -678,7 +678,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
                   <div className="h-[1px] flex-1 bg-gray-100" />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {group.events.map((step, index) =>
                     renderTimelineItem(step, index === group.events.length - 1)
                   )}

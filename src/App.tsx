@@ -31,6 +31,10 @@ interface PersistedSymptomEntry {
   created_at: string;
 }
 
+interface ActiveFollowUpEpisode {
+  initial_symptom_entry_id: string;
+}
+
 interface SymptomEpisodeSelectionProps {
   onSelect: (id: string) => void;
   onBack: () => void;
@@ -168,6 +172,11 @@ export const App: React.FC = () => {
   const [selectedSymptomEntryId, setSelectedSymptomEntryId] = useState<string | null>(null);
   const [isSavingFollowUp, setIsSavingFollowUp] = useState(false);
   const [followUpSaveError, setFollowUpSaveError] = useState<string | null>(null);
+  const [isLoadingFollowUpEpisode, setIsLoadingFollowUpEpisode] = useState(false);
+  const [followUpEpisodeError, setFollowUpEpisodeError] = useState<string | null>(null);
+  const [followUpEpisodeRefreshKey, setFollowUpEpisodeRefreshKey] = useState(0);
+  const [isFollowUpSaved, setIsFollowUpSaved] = useState(false);
+  const [dashboardInitialItem, setDashboardInitialItem] = useState<'dashboard' | 'health-timeline'>('dashboard');
   const [selectedQuestionSymptomEntryId, setSelectedQuestionSymptomEntryId] = useState<string | null>(null);
   const [selectedConsultationSymptomEntryId, setSelectedConsultationSymptomEntryId] = useState<string | null>(null);
 
@@ -275,8 +284,11 @@ export const App: React.FC = () => {
     setJourneyType('follow-up');
     setSelectedSymptomEntryId(null);
     setIsSavingFollowUp(false);
+    setIsLoadingFollowUpEpisode(true);
     setFollowUpSaveError(null);
-    setCurrentView('follow-up-selection');
+    setFollowUpEpisodeError(null);
+    setIsFollowUpSaved(false);
+    setCurrentView('follow-up-intake');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -290,7 +302,7 @@ export const App: React.FC = () => {
     }
 
     if (!selectedSymptomEntryId) {
-      setFollowUpSaveError('Please select a previous symptom entry first.');
+      setFollowUpSaveError('An active health episode is required to save a follow-up.');
       return;
     }
 
@@ -316,9 +328,7 @@ export const App: React.FC = () => {
         return;
       }
 
-      setSelectedSymptomEntryId(null);
-      setCurrentView('dashboard');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsFollowUpSaved(true);
     } catch (error) {
       console.error('Unexpected error inserting follow-up entry:', error);
       setFollowUpSaveError('Failed to save your follow-up. Please try again.');
@@ -350,6 +360,51 @@ export const App: React.FC = () => {
     setCurrentView('landing');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    if (currentView !== 'follow-up-intake' || !session) return;
+
+    let isMounted = true;
+
+    const loadActiveFollowUpEpisode = async () => {
+      setIsLoadingFollowUpEpisode(true);
+      setFollowUpEpisodeError(null);
+      setSelectedSymptomEntryId(null);
+
+      try {
+        const { data, error } = await supabase
+          .from('health_episodes')
+          .select('initial_symptom_entry_id')
+          .eq('user_id', session.user.id)
+          .eq('status', 'active')
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle<ActiveFollowUpEpisode>();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('Failed to load active health episode for follow-up visit:', error);
+          setFollowUpEpisodeError('Nura couldn’t load your active health episode. Please try again.');
+          return;
+        }
+
+        setSelectedSymptomEntryId(data?.initial_symptom_entry_id ?? null);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Unexpected error loading active health episode for follow-up visit:', error);
+        setFollowUpEpisodeError('Nura couldn’t load your active health episode. Please try again.');
+      } finally {
+        if (isMounted) setIsLoadingFollowUpEpisode(false);
+      }
+    };
+
+    void loadActiveFollowUpEpisode();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentView, followUpEpisodeRefreshKey, session?.user.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -389,6 +444,12 @@ export const App: React.FC = () => {
       setCurrentView('login');
     }
   }, [currentView, isAuthLoading, session]);
+
+  useEffect(() => {
+    if (currentView === 'dashboard' && dashboardInitialItem === 'health-timeline') {
+      setDashboardInitialItem('dashboard');
+    }
+  }, [currentView, dashboardInitialItem]);
 
   // Intercept clicks on anchor links like #get-started or #dashboard
   useEffect(() => {
@@ -455,7 +516,7 @@ export const App: React.FC = () => {
           ? 'questions'
           : selectedConsultationSymptomEntryId
             ? 'appointment'
-            : 'dashboard'}
+            : dashboardInitialItem}
         questionSymptomEntryId={selectedQuestionSymptomEntryId}
         consultationSymptomEntryId={selectedConsultationSymptomEntryId}
         userId={session.user.id}
@@ -465,21 +526,6 @@ export const App: React.FC = () => {
         userEmail={session.user.email}
         onAuthenticatedUserUpdated={handleAuthenticatedUserUpdated}
         onSignedOut={handleSignedOut}
-      />
-    );
-  }
-
-  if (currentView === 'follow-up-selection' && session) {
-    return (
-      <SymptomEpisodeSelection
-        purpose="follow-up"
-        onBack={() => setCurrentView('dashboard')}
-        onSelect={(id) => {
-          setSelectedSymptomEntryId(id);
-          setFollowUpSaveError(null);
-          setCurrentView('follow-up-intake');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
       />
     );
   }
@@ -512,7 +558,80 @@ export const App: React.FC = () => {
     );
   }
 
-  if (currentView === 'follow-up-intake' && session && selectedSymptomEntryId) {
+  if (currentView === 'follow-up-intake' && session) {
+    const goToDashboard = () => {
+      setDashboardInitialItem('dashboard');
+      setSelectedSymptomEntryId(null);
+      setCurrentView('dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const goToHealthTimeline = () => {
+      setDashboardInitialItem('health-timeline');
+      setSelectedSymptomEntryId(null);
+      setCurrentView('dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    if (isLoadingFollowUpEpisode) {
+      return (
+        <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
+          <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-10 text-center shadow-xl shadow-blue-500/5" aria-busy="true">
+            <p className="text-sm font-medium text-nuraTextSecondary">Loading your active health episode...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (followUpEpisodeError) {
+      return (
+        <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
+          <div className="w-full max-w-xl rounded-[2rem] border border-red-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-5">
+            <div className="space-y-2">
+              <h1 className="font-heading text-2xl font-extrabold text-nuraText">Follow-up unavailable</h1>
+              <p className="text-sm text-red-700" role="alert">{followUpEpisodeError}</p>
+            </div>
+            <div className="flex flex-col-reverse sm:flex-row justify-center gap-3">
+              <button type="button" onClick={goToDashboard} className="px-5 py-3 text-sm font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors">Back to Dashboard</button>
+              <button type="button" onClick={() => setFollowUpEpisodeRefreshKey((key) => key + 1)} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">Try Again</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isFollowUpSaved) {
+      return (
+        <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
+          <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-6">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 font-heading font-bold">✓</div>
+            <div className="space-y-2">
+              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-nuraText">Follow-up recorded</h1>
+              <p className="text-sm sm:text-base text-nuraTextSecondary">Your update has been added to your health timeline.</p>
+            </div>
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <button type="button" onClick={goToDashboard} className="w-full sm:w-auto min-w-[210px] rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">Back to Dashboard</button>
+              <button type="button" onClick={goToHealthTimeline} className="text-sm font-semibold text-primary hover:text-blue-600 transition-colors">View in Health Timeline →</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!selectedSymptomEntryId) {
+      return (
+        <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
+          <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-6">
+            <div className="space-y-3">
+              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-nuraText">No active health episode</h1>
+              <p className="text-sm sm:text-base leading-relaxed text-nuraTextSecondary">Follow-ups are recorded as part of an ongoing health episode. Start a new episode to begin tracking a new health concern.</p>
+            </div>
+            <button type="button" onClick={handleStartNewIllness} className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">Start New Episode</button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <FollowUpIntake
         onComplete={handleCompleteFollowUp}

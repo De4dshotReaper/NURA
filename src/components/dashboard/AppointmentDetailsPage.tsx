@@ -7,6 +7,7 @@ interface SymptomEpisode { symptoms: string; severity: number | null; duration: 
 interface PrescriptionOption { id: string; file_name: string; medicines: unknown; uploaded_at: string; }
 interface LabReportOption { id: string; file_name: string; report_type: string | null; uploaded_at: string; }
 interface PreparedQuestion { id: string; question: string; }
+interface PreviousConsultation { id: string; consultation_at: string | null; }
 
 interface AppointmentDetailsPageProps {
   symptomEntryId: string;
@@ -80,7 +81,31 @@ export const AppointmentDetailsPage: React.FC<AppointmentDetailsPageProps> = ({
     };
     const loadQuestions = async () => {
       try {
-        const { data, error } = await supabase.from('consultation_questions').select('id, question').eq('symptom_entry_id', symptomEntryId).order('created_at', { ascending: true });
+        const { data: latestConsultation, error: consultationError } = await supabase
+          .from('consultations')
+          .select('id, consultation_at')
+          .eq('symptom_entry_id', symptomEntryId)
+          .eq('user_id', userId)
+          .order('consultation_at', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle<PreviousConsultation>();
+
+        if (!mounted) return;
+        if (consultationError) {
+          fail('Failed to determine the latest consultation for prepared questions:', consultationError);
+          return;
+        }
+
+        let questionQuery = supabase
+          .from('consultation_questions')
+          .select('id, question')
+          .eq('symptom_entry_id', symptomEntryId);
+
+        questionQuery = latestConsultation
+          ? questionQuery.eq('previous_consultation_id', latestConsultation.id)
+          : questionQuery.is('previous_consultation_id', null);
+
+        const { data, error } = await questionQuery.order('created_at', { ascending: true });
         if (!mounted) return;
         if (error) fail('Failed to load prepared questions for appointment record:', error); else setPreparedQuestions((data ?? []) as PreparedQuestion[]);
       } catch (error) { fail('Unexpected error loading prepared questions for appointment record:', error); }

@@ -151,7 +151,7 @@ interface DashboardLayoutProps {
   onStartConsultation?: () => void;
   onCloseConsultation?: () => void;
   onConsultationSaved?: () => void;
-  initialActiveItem?: 'dashboard' | 'questions' | 'appointment';
+  initialActiveItem?: 'dashboard' | 'health-timeline' | 'questions' | 'appointment';
   questionSymptomEntryId?: string | null;
   consultationSymptomEntryId?: string | null;
   userId?: string;
@@ -864,15 +864,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
 
                 {currentEpisode && !isLoadingCurrentEpisode && !currentEpisodeError && (
-                  <div className="pt-6 mt-6 border-t border-gray-100/80 flex flex-wrap items-center justify-between gap-3">
-                    <a
-                      href="#full-entry"
-                      onClick={(e) => e.preventDefault()}
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
-                    >
-                      <span>View Full Entry</span>
-                      <span className="transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">→</span>
-                    </a>
+                  <div className="pt-6 mt-6 border-t border-gray-100/80 flex justify-end">
                     {!showCompleteEpisodeConfirmation && (
                       <button
                         type="button"
