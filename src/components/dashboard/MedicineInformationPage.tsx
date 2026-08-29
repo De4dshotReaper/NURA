@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pill, FileText, CheckCircle2, Clock, Calendar, Sun, Shield, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Pill, FileText, CheckCircle2, Clock, Calendar, Sun, Shield, ArrowLeft, AlertCircle, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { PrescriptionSummaryPage } from './PrescriptionSummaryPage';
 import type { ExtractedMedicine } from '../../types';
@@ -8,9 +8,37 @@ import type { ExtractedMedicine } from '../../types';
 interface PrescriptionItem {
   id: string;
   date: string;
-  fileType: 'PDF' | 'JPG' | 'PNG';
+  fileType: string;
   title: string;
+  uploadedAt: string;
+  rawText: string | null;
+  medicines: ExtractedMedicine[];
 }
+
+interface PrescriptionRow {
+  id: string;
+  file_name: string;
+  file_type: string;
+  raw_text: string | null;
+  medicines: unknown;
+  uploaded_at: string;
+}
+
+const toPrescriptionItem = (row: PrescriptionRow): PrescriptionItem => ({
+  id: row.id,
+  title: row.file_name,
+  fileType: row.file_type,
+  date: new Date(row.uploaded_at).toLocaleString('en-US', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }),
+  uploadedAt: row.uploaded_at,
+  rawText: row.raw_text,
+  medicines: Array.isArray(row.medicines) ? row.medicines as ExtractedMedicine[] : [],
+});
 
 interface PrescriptionResponse {
   medicines: ExtractedMedicine[];
@@ -28,11 +56,7 @@ interface MedicineInformationPageProps {
 export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = ({
   onBackToDashboard
 }) => {
-  const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([
-    { id: '1', date: '31 Jul 2026', fileType: 'PDF', title: 'Prescription_31_Jul.pdf' },
-    { id: '2', date: '18 Jul 2026', fileType: 'JPG', title: 'Consultation_Rx_18_Jul.jpg' },
-    { id: '3', date: '4 Jul 2026', fileType: 'PNG', title: 'Clinic_Prescription_04_Jul.png' },
-  ]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -47,6 +71,118 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedPrescriptionIdRef = useRef<string | null>(null);
+
+  const addPrescriptionToHistory = (prescription: PrescriptionItem) => {
+    setPrescriptions((currentPrescriptions) => [
+      prescription,
+      ...currentPrescriptions.filter((currentPrescription) => currentPrescription.id !== prescription.id),
+    ].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()));
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadPrescriptionHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('prescriptions')
+          .select('id, file_name, file_type, raw_text, medicines, uploaded_at')
+          .order('uploaded_at', { ascending: false });
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (error) {
+          setErrorMessage('Could not load your saved prescription history.');
+          return;
+        }
+
+        const savedPrescriptions = (data as PrescriptionRow[]).map(toPrescriptionItem);
+        setPrescriptions((currentPrescriptions) => {
+          const prescriptionsById = new Map(currentPrescriptions.map((prescription) => [prescription.id, prescription]));
+          savedPrescriptions.forEach((prescription) => prescriptionsById.set(prescription.id, prescription));
+
+          return Array.from(prescriptionsById.values())
+            .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+        });
+      } catch {
+        if (isMounted) {
+          setErrorMessage('Could not load your saved prescription history.');
+        }
+      }
+    };
+
+    void loadPrescriptionHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const persistProcessedPrescription = async ({
+    fileName,
+    fileType,
+    rawText,
+    medicines,
+  }: {
+    fileName: string;
+    fileType: 'JPG' | 'PNG';
+    rawText: string | null;
+    medicines: ExtractedMedicine[];
+  }) => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        return null;
+      }
+
+      const { data, error } = await supabase.from('prescriptions').insert({
+        user_id: user.id,
+        file_name: fileName,
+        file_type: fileType,
+        raw_text: rawText,
+        medicines,
+      }).select('id, file_name, file_type, raw_text, medicines, uploaded_at').single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      const savedPrescription = toPrescriptionItem(data as PrescriptionRow);
+      addPrescriptionToHistory(savedPrescription);
+      return savedPrescription;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleDeletePrescription = async (prescriptionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('prescriptions')
+        .delete()
+        .eq('id', prescriptionId);
+
+      if (error) {
+        throw error;
+      }
+
+      setPrescriptions((currentPrescriptions) =>
+        currentPrescriptions.filter((prescription) => prescription.id !== prescriptionId)
+      );
+      setActiveSummaryRx((currentPrescription) =>
+        currentPrescription?.id === prescriptionId ? null : currentPrescription
+      );
+
+      if (processedPrescriptionId === prescriptionId) {
+        setProcessedPrescriptionId(null);
+      }
+    } catch {
+      setErrorMessage('Could not delete this prescription. Please try again.');
+    }
+  };
 
   const handleFileSelect = async (file: File) => {
     const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -92,9 +228,11 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
       date: new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
       fileType: detectedType,
       title: file.name,
+      uploadedAt: new Date().toISOString(),
+      rawText: null,
+      medicines: [],
     };
 
-    setPrescriptions((prev) => [newRx, ...prev]);
     setHasUploaded(true);
     setShowSuccess(true);
     setTimeout(() => {
@@ -159,27 +297,52 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
               );
 
               if (processedPrescriptionIdRef.current === newRx.id) {
-                setExtractedData((currentData) => currentData && ({
-                  ...currentData,
-                  medicines: currentData.medicines.map((medicine) => {
-                    const explanation = medicine.name
-                      ? explanationsByName.get(medicine.name.trim().toLowerCase())
-                      : undefined;
+                const enrichedMedicines = prescriptionData.medicines.map((medicine) => {
+                  const explanation = medicine.name
+                    ? explanationsByName.get(medicine.name.trim().toLowerCase())
+                    : undefined;
 
-                    return explanation
-                      ? {
-                          ...medicine,
-                          whatItsFor: explanation.whatItsFor ?? null,
-                          commonSideEffects: explanation.commonSideEffects ?? [],
-                          thingsToRemember: explanation.thingsToRemember ?? [],
-                        }
-                      : medicine;
-                  }),
-                }));
+                  return explanation
+                    ? {
+                        ...medicine,
+                        whatItsFor: explanation.whatItsFor ?? null,
+                        commonSideEffects: explanation.commonSideEffects ?? [],
+                        thingsToRemember: explanation.thingsToRemember ?? [],
+                      }
+                    : medicine;
+                });
+
+                setExtractedData({ ...prescriptionData, medicines: enrichedMedicines });
+
+                const savedPrescription = await persistProcessedPrescription({
+                  fileName: file.name,
+                  fileType: detectedType,
+                  rawText: prescriptionData.rawText,
+                  medicines: enrichedMedicines,
+                });
+
+                if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
+                  setProcessedPrescriptionId(savedPrescription.id);
+                } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
+                  setErrorMessage('Prescription processed, but could not be saved to your history.');
+                }
               }
             } catch {
               if (processedPrescriptionIdRef.current === newRx.id) {
                 setErrorMessage('General medicine information is temporarily unavailable. Your prescription details are still available.');
+
+                const savedPrescription = await persistProcessedPrescription({
+                  fileName: file.name,
+                  fileType: detectedType,
+                  rawText: prescriptionData.rawText,
+                  medicines: prescriptionData.medicines,
+                });
+
+                if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
+                  setProcessedPrescriptionId(savedPrescription.id);
+                } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
+                  setErrorMessage('General medicine information is temporarily unavailable. Your prescription details are still available. Prescription processed, but could not be saved to your history.');
+                }
               }
             } finally {
               if (processedPrescriptionIdRef.current === newRx.id) {
@@ -187,6 +350,19 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
               }
             }
           })();
+        } else if (processedPrescriptionIdRef.current === newRx.id) {
+          const savedPrescription = await persistProcessedPrescription({
+            fileName: file.name,
+            fileType: detectedType,
+            rawText: prescriptionData.rawText,
+            medicines: prescriptionData.medicines,
+          });
+
+          if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
+            setProcessedPrescriptionId(savedPrescription.id);
+          } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
+            setErrorMessage('Prescription processed, but could not be saved to your history.');
+          }
         }
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Failed to analyze prescription image. Please try again.');
@@ -215,7 +391,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         prescriptionTitle={activeSummaryRx.title}
         uploadDate={activeSummaryRx.date}
         fileType={activeSummaryRx.fileType}
-        medicines={activeSummaryRx.id === processedPrescriptionId ? extractedData?.medicines : undefined}
+        medicines={activeSummaryRx.medicines}
         isExplanationLoading={activeSummaryRx.id === processedPrescriptionId && isExplanationLoading}
       />
     );
@@ -483,7 +659,15 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
               <button
                 onClick={() => {
                   const processedPrescription = prescriptions.find((rx) => rx.id === processedPrescriptionId);
-                  setActiveSummaryRx(processedPrescription ?? { id: '1', date: 'Today', fileType: 'PDF', title: 'Prescription_Summary.pdf' });
+                  setActiveSummaryRx(processedPrescription ?? {
+                    id: 'preview',
+                    date: 'Today',
+                    fileType: 'PDF',
+                    title: 'Prescription_Summary.pdf',
+                    uploadedAt: new Date().toISOString(),
+                    rawText: null,
+                    medicines: extractedData?.medicines ?? [],
+                  });
                 }}
                 className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
@@ -520,14 +704,6 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
               Your uploaded prescription history and simple breakdowns
             </p>
           </div>
-          {prescriptions.length > 0 && (
-            <button
-              onClick={() => setPrescriptions([])}
-              className="text-xs text-nuraTextSecondary/60 hover:text-nuraText transition-colors"
-            >
-              Clear All (Test Empty State)
-            </button>
-          )}
         </div>
 
         {prescriptions.length > 0 ? (
@@ -556,6 +732,18 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <span className="transform group-hover:translate-x-1 transition-transform">Open Medicine Details →</span>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${rx.title}`}
+                    title="Delete prescription"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleDeletePrescription(rx.id);
+                    }}
+                    className="w-8 h-8 rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </motion.div>
             ))}
