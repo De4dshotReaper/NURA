@@ -25,9 +25,66 @@ export const App: React.FC = () => {
   const [duration, setDuration] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isSavingSymptoms, setIsSavingSymptoms] = useState(false);
+  const [symptomSaveError, setSymptomSaveError] = useState<string | null>(null);
+
+  const handleConfirmNewIllness = async () => {
+    if (isSavingSymptoms) return;
+
+    const trimmedSymptoms = symptoms ? symptoms.trim() : '';
+    const trimmedDuration = duration ? duration.trim() : '';
+
+    if (!trimmedSymptoms || severityScore === null || !trimmedDuration) {
+      setSymptomSaveError('Please ensure all symptom details are provided.');
+      return;
+    }
+
+    const userId = session?.user?.id;
+    if (!userId) {
+      setSymptomSaveError('User authentication required to save symptom entry.');
+      return;
+    }
+
+    setIsSavingSymptoms(true);
+    setSymptomSaveError(null);
+
+    try {
+      const { error } = await supabase.from('symptom_entries').insert({
+        user_id: userId,
+        symptoms: trimmedSymptoms,
+        severity: severityScore,
+        duration: trimmedDuration,
+      });
+
+      if (error) {
+        console.error('Failed to insert symptom entry into Supabase:', error);
+        setSymptomSaveError('Failed to save symptom details. Please try again.');
+        setIsSavingSymptoms(false);
+        return;
+      }
+
+      setIsSavingSymptoms(false);
+      setCurrentView('consultation-transition');
+    } catch (err) {
+      console.error('Unexpected error inserting symptom entry:', err);
+      setSymptomSaveError('An unexpected error occurred while saving.');
+      setIsSavingSymptoms(false);
+    }
+  };
 
   const handleStartJourney = () => {
     setCurrentView('onboarding-1');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStartNewIllness = () => {
+    setJourneyType('new-illness');
+    setSymptoms('');
+    setSeverityScore(null);
+    setDuration(null);
+    setIsSavingSymptoms(false);
+    setSymptomSaveError(null);
+    setCurrentView('next-flow');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -39,9 +96,6 @@ export const App: React.FC = () => {
 
       if (isMounted) {
         setSession(session);
-        if (session) {
-          setCurrentView('dashboard');
-        }
         setIsAuthLoading(false);
       }
     };
@@ -114,7 +168,12 @@ export const App: React.FC = () => {
   }
 
   if (currentView === 'dashboard' && session) {
-    return <DashboardLayout entryMode={journeyType === 'new-illness' ? 'new' : 'follow-up'} />;
+    return (
+      <DashboardLayout
+        entryMode={journeyType === 'new-illness' ? 'new' : 'follow-up'}
+        onStartNewIllness={handleStartNewIllness}
+      />
+    );
   }
 
   if (currentView === 'privacy') {
@@ -137,7 +196,7 @@ export const App: React.FC = () => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onLoginSuccess={() => {
-          setCurrentView('dashboard');
+          setCurrentView('landing');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onStartJourney={handleStartJourney}
@@ -166,6 +225,7 @@ export const App: React.FC = () => {
               setCurrentView('login');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
+            isAuthenticated={!!session}
           />
 
           {/* Hero Section */}
@@ -226,7 +286,9 @@ export const App: React.FC = () => {
           symptoms={symptoms}
           severity={severityScore}
           duration={duration || ''}
-          onContinue={() => setCurrentView('consultation-transition')}
+          onContinue={handleConfirmNewIllness}
+          isSaving={isSavingSymptoms}
+          errorMessage={symptomSaveError}
         />
       )}
 

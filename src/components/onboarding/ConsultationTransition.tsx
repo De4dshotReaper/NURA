@@ -23,6 +23,15 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
 }) => {
   const [subtitleIndex, setSubtitleIndex] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [recordedAt] = useState(() => new Date());
+
+  const formattedRecordedAt = `${recordedAt.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+  })} • ${recordedAt.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
 
   useEffect(() => {
     const t1 = setTimeout(() => {
@@ -152,7 +161,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                   Consultation Summary
                 </span>
                 <span className="text-xs font-normal text-gray-400/80 tracking-wide">
-                  Just now
+                  {formattedRecordedAt}
                 </span>
               </div>
 
@@ -167,7 +176,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                     Recorded
                   </h4>
                   <p className="text-sm sm:text-base font-semibold text-white">
-                    Today • Just prepared
+                    {formattedRecordedAt}
                   </p>
                 </motion.div>
 

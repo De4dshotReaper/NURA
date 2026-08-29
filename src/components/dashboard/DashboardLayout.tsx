@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -17,11 +17,19 @@ import { LabReportExplanationPage } from './LabReportExplanationPage';
 import { HealthTimelinePage } from './HealthTimelinePage';
 import { QuestionsPage } from './QuestionsPage';
 import { AppointmentDetailsPage } from './AppointmentDetailsPage';
+import { supabase } from '../../lib/supabase';
 
 interface NavItem {
   id: string;
   label: string;
   icon: React.ElementType;
+}
+
+interface SymptomEntry {
+  symptoms: string;
+  severity: number;
+  duration: string;
+  created_at: string;
 }
 
 const mainNavItems: NavItem[] = [
@@ -59,14 +67,52 @@ const getFormattedDate = (): string => {
 
 interface DashboardLayoutProps {
   entryMode?: 'new' | 'follow-up';
+  onStartNewIllness?: () => void;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'follow-up' }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'follow-up', onStartNewIllness }) => {
   const [activeItem, setActiveItem] = useState<string>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [hasAppointment, setHasAppointment] = useState<boolean>(false);
-  const [hasSymptoms, setHasSymptoms] = useState<boolean>(true);
+  const [latestSymptom, setLatestSymptom] = useState<SymptomEntry | null>(null);
+  const [isLoadingSymptoms, setIsLoadingSymptoms] = useState<boolean>(true);
   const [hasTimeline, setHasTimeline] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLatestSymptom = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('symptom_entries')
+          .select('symptoms, severity, duration, created_at')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle<SymptomEntry>();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('Failed to load latest symptom entry:', error);
+          setLatestSymptom(null);
+        } else {
+          setLatestSymptom(data);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Failed to load latest symptom entry:', error);
+        setLatestSymptom(null);
+      } finally {
+        if (isMounted) setIsLoadingSymptoms(false);
+      }
+    };
+
+    void loadLatestSymptom();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const renderNavList = (items: NavItem[]) => (
     <ul className="space-y-1.5">
@@ -78,8 +124,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
           <li key={item.id}>
             <button
               onClick={() => {
-                setActiveItem(item.id);
-                setMobileMenuOpen(false);
+                if (item.id === 'new-illness') {
+                  setMobileMenuOpen(false);
+                  onStartNewIllness?.();
+                } else {
+                  setActiveItem(item.id);
+                  setMobileMenuOpen(false);
+                }
               }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ease-out cursor-pointer ${
                 isActive
@@ -276,19 +327,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
                     <h3 className="font-heading font-bold text-lg text-nuraText">
                       Symptoms Recorded
                     </h3>
-                    <button
-                      onClick={() => setHasSymptoms(!hasSymptoms)}
-                      className="text-[11px] text-nuraTextSecondary/60 hover:text-nuraText transition-colors"
-                      title="Toggle state for demo"
-                    >
-                      {hasSymptoms ? 'Show Empty State' : 'Show Sample Entry'}
-                    </button>
                   </div>
 
-                  {hasSymptoms ? (
+                  {isLoadingSymptoms ? (
+                    <div className="py-10 text-center">
+                      <p className="text-sm font-medium text-nuraTextSecondary">
+                        Loading symptoms...
+                      </p>
+                    </div>
+                  ) : latestSymptom ? (
                     <div className="space-y-6">
                       <div className="text-xs font-semibold text-nuraTextSecondary/70 tracking-wide uppercase">
-                        31 Jul • 7:15 PM
+                        {new Date(latestSymptom.created_at).toLocaleString()}
                       </div>
 
                       <div className="space-y-3 bg-gray-50/60 p-5 rounded-2xl border border-gray-100/80">
@@ -296,7 +346,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
                           Symptoms
                         </div>
                         <p className="font-sans text-base sm:text-lg text-nuraText font-normal leading-relaxed whitespace-pre-line">
-                          {"I've had a headache since yesterday.\nMy throat hurts."}
+                          {latestSymptom.symptoms}
                         </p>
                       </div>
 
@@ -306,7 +356,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
                             Severity
                           </span>
                           <div className="font-heading font-bold text-xl text-nuraText">
-                            7 <span className="text-sm font-normal text-nuraTextSecondary">/ 10</span>
+                            {latestSymptom.severity} <span className="text-sm font-normal text-nuraTextSecondary">/ 10</span>
                           </div>
                         </div>
 
@@ -315,7 +365,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
                             Duration
                           </span>
                           <div className="font-heading font-bold text-xl text-nuraText">
-                            2–3 Days
+                            {latestSymptom.duration}
                           </div>
                         </div>
                       </div>

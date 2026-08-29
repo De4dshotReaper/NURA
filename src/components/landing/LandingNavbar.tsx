@@ -4,9 +4,10 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 interface LandingNavbarProps {
   onStartJourney: () => void;
   onSignIn?: () => void;
+  isAuthenticated?: boolean;
 }
 
-export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, onSignIn }) => {
+export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, onSignIn, isAuthenticated = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -65,16 +66,21 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
         {/* Right CTA Actions */}
         <div className="hidden md:flex items-center gap-5">
           <a
-            href="#login"
+            href={isAuthenticated ? "#dashboard" : "#login"}
             onClick={(e) => {
-              if (onSignIn) {
+              if (isAuthenticated) {
+                 e.preventDefault();
+                 // Logic to set currentView to dashboard - wait, landing navbar does not directly change view. 
+                 // The app does. Let's make sure clicking Dashboard works.
+                 // Actually the existing App.tsx handles #dashboard anchor. Let's stick with that.
+              } else if (onSignIn) {
                 e.preventDefault();
                 onSignIn();
               }
             }}
             className="px-4 py-2 text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors duration-300 rounded-xl cursor-pointer inline-flex items-center"
           >
-            Sign In
+            {isAuthenticated ? 'Dashboard' : 'Sign In'}
           </a>
           <button
             onClick={onStartJourney}
@@ -112,17 +118,17 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
           </div>
           <div className="pt-4 border-t border-gray-100 flex flex-col gap-3">
             <a
-              href="#login"
+              href={isAuthenticated ? "#dashboard" : "#login"}
               onClick={(e) => {
                 setMobileMenuOpen(false);
-                if (onSignIn) {
+                if (!isAuthenticated && onSignIn) {
                   e.preventDefault();
                   onSignIn();
                 }
               }}
               className="w-full py-2.5 text-center text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors"
             >
-              Sign In
+              {isAuthenticated ? 'Dashboard' : 'Sign In'}
             </a>
             <button
               onClick={() => {

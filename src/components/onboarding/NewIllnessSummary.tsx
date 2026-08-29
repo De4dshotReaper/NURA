@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '../common/Button';
+import { AlertCircle } from 'lucide-react';
 
 interface NewIllnessSummaryProps {
   symptoms: string;
   severity: number | null;
   duration: string;
   onContinue: () => void;
+  isSaving?: boolean;
+  errorMessage?: string | null;
 }
 
 export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
@@ -14,7 +17,18 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
   severity,
   duration,
   onContinue,
+  isSaving = false,
+  errorMessage = null,
 }) => {
+  const [recordedAt] = useState(() => new Date());
+  const formattedRecordedAt = `${recordedAt.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+  })} • ${recordedAt.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-12 overflow-hidden bg-nuraBg selection:bg-primary/10 selection:text-primary">
       <motion.div
@@ -58,6 +72,18 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
           </p>
         </motion.div>
 
+        {/* Error Banner if insert fails */}
+        {errorMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-[590px] p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm font-semibold flex items-center gap-3 text-left shadow-lg"
+          >
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+            <span>{errorMessage}</span>
+          </motion.div>
+        )}
+
         {/* Centered Summary Card */}
         <motion.div
           initial={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -71,7 +97,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
               Consultation Summary
             </span>
             <span className="text-xs font-normal text-gray-400/80 tracking-wide">
-              31 July • 7:15 PM
+              {formattedRecordedAt}
             </span>
           </div>
 
@@ -86,7 +112,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
                 Recorded
               </h4>
               <p className="text-sm sm:text-base font-semibold text-white">
-                31 July • 7:15 PM
+                {formattedRecordedAt}
               </p>
             </motion.div>
 
@@ -145,9 +171,10 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
             variant="primary"
             size="lg"
             onClick={onContinue}
-            className="w-full sm:w-auto min-w-[200px] py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            disabled={isSaving}
+            className="w-full sm:w-auto min-w-[200px] py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continue →
+            {isSaving ? 'Saving...' : 'Continue →'}
           </Button>
         </motion.div>
       </motion.div>

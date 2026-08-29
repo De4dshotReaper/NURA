@@ -8,6 +8,15 @@ interface SymptomEntryProps {
 export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
   const [loaded, setLoaded] = useState(false);
   const [value, setValue] = useState('');
+  const [recordedAt] = useState(() => new Date());
+
+  const formattedRecordedAt = `${recordedAt.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+  })} • ${recordedAt.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -87,7 +96,7 @@ export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
               Recorded automatically
             </span>
             <span className="text-sm font-semibold text-nuraTextSecondary">
-              31 July • 7:15 PM
+              {formattedRecordedAt}
             </span>
           </div>
         </div>
