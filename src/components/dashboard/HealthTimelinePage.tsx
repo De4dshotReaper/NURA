@@ -6,6 +6,7 @@ import {
   Clock,
   ArrowLeft,
   FileCheck,
+  CheckCircle2,
   ChevronRight,
   ArrowDown
 } from 'lucide-react';
@@ -16,7 +17,7 @@ interface TimelineStep {
   id: string;
   timestamp: string;
   title: string;
-  category: 'symptoms' | 'prescription' | 'lab';
+  category: 'symptoms' | 'prescription' | 'lab' | 'followup';
   description: string;
   details?: string[];
   badge?: string;
@@ -46,6 +47,18 @@ interface LabReportRow {
   report_type: string | null;
   parameters: unknown;
   uploaded_at: string;
+}
+
+interface FollowUpRow {
+  id: string;
+  progress: string | null;
+  current_symptoms: string | null;
+  medicine_compliance: string | null;
+  medicine_reason: string | null;
+  has_side_effects: boolean;
+  side_effects_text: string | null;
+  questions: string | null;
+  created_at: string;
 }
 
 interface TimelineGroup {
@@ -199,8 +212,60 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
       }
     };
 
+    const loadFollowUps = async (): Promise<TimelineStep[]> => {
+      try {
+        const { data, error } = await supabase
+          .from('follow_up_entries')
+          .select('id, progress, current_symptoms, medicine_compliance, medicine_reason, has_side_effects, side_effects_text, questions, created_at');
+        if (error) {
+          console.error('Failed to load follow-up entries for health timeline:', error);
+          return [];
+        }
+
+        return (data as FollowUpRow[]).map((row) => {
+          const progress = row.progress?.trim() ?? '';
+          const currentSymptoms = row.current_symptoms?.trim() ?? '';
+          const medicineCompliance = row.medicine_compliance?.trim() ?? '';
+          const medicineReason = row.medicine_reason?.trim() ?? '';
+          const sideEffectsText = row.side_effects_text?.trim() ?? '';
+          const questions = row.questions?.trim() ?? '';
+          const details = [
+            progress ? `Recovery progress: ${progress}` : null,
+            medicineCompliance ? `Medicine compliance: ${medicineCompliance}` : null,
+            medicineReason ? `Medicine reason: ${medicineReason}` : null,
+            row.has_side_effects
+              ? sideEffectsText
+                ? `Side effects: ${sideEffectsText}`
+                : 'Side effects reported: Yes'
+              : 'Side effects reported: No',
+            questions ? `Questions: ${questions}` : null,
+          ].filter((detail): detail is string => Boolean(detail));
+
+          return {
+            id: `followup-${row.id}`,
+            timestamp: row.created_at,
+            title: 'Follow-up Recorded',
+            category: 'followup' as const,
+            description: currentSymptoms || 'Follow-up information recorded.',
+            details: details.length > 0 ? details : undefined,
+            badge: progress || undefined,
+            badgeColor: 'bg-teal-50 text-teal-700 border-teal-200/60',
+            icon: CheckCircle2,
+          };
+        });
+      } catch (error) {
+        console.error('Unexpected error loading follow-up entries for health timeline:', error);
+        return [];
+      }
+    };
+
     const loadTimeline = async () => {
-      const results = await Promise.all([loadSymptoms(), loadPrescriptions(), loadLabReports()]);
+      const results = await Promise.all([
+        loadSymptoms(),
+        loadPrescriptions(),
+        loadLabReports(),
+        loadFollowUps(),
+      ]);
       if (!isMounted) return;
       setEvents(results.flat());
       setIsLoading(false);

@@ -32,6 +32,13 @@ interface SymptomEntry {
   created_at: string;
 }
 
+interface FollowUpEntry {
+  progress: string;
+  current_symptoms: string | null;
+  medicine_compliance: string | null;
+  created_at: string;
+}
+
 const mainNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'new-illness', label: 'New Illness', icon: Stethoscope },
@@ -68,14 +75,21 @@ const getFormattedDate = (): string => {
 interface DashboardLayoutProps {
   entryMode?: 'new' | 'follow-up';
   onStartNewIllness?: () => void;
+  onStartFollowUp?: () => void;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'follow-up', onStartNewIllness }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+  entryMode = 'follow-up',
+  onStartNewIllness,
+  onStartFollowUp,
+}) => {
   const [activeItem, setActiveItem] = useState<string>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [hasAppointment, setHasAppointment] = useState<boolean>(false);
   const [latestSymptom, setLatestSymptom] = useState<SymptomEntry | null>(null);
   const [isLoadingSymptoms, setIsLoadingSymptoms] = useState<boolean>(true);
+  const [latestFollowUp, setLatestFollowUp] = useState<FollowUpEntry | null>(null);
+  const [isLoadingFollowUp, setIsLoadingFollowUp] = useState<boolean>(true);
   const [hasTimeline, setHasTimeline] = useState<boolean>(true);
 
   useEffect(() => {
@@ -107,7 +121,34 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
       }
     };
 
+    const loadLatestFollowUp = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('follow_up_entries')
+          .select('progress, current_symptoms, medicine_compliance, created_at')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle<FollowUpEntry>();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('Failed to load latest follow-up entry:', error);
+          setLatestFollowUp(null);
+        } else {
+          setLatestFollowUp(data);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Failed to load latest follow-up entry:', error);
+        setLatestFollowUp(null);
+      } finally {
+        if (isMounted) setIsLoadingFollowUp(false);
+      }
+    };
+
     void loadLatestSymptom();
+    void loadLatestFollowUp();
 
     return () => {
       isMounted = false;
@@ -127,6 +168,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
                 if (item.id === 'new-illness') {
                   setMobileMenuOpen(false);
                   onStartNewIllness?.();
+                } else if (item.id === 'follow-up') {
+                  setMobileMenuOpen(false);
+                  onStartFollowUp?.();
                 } else {
                   setActiveItem(item.id);
                   setMobileMenuOpen(false);
@@ -485,7 +529,76 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ entryMode = 'f
               </motion.div>
             </div>
 
-            {/* SECOND ROW: Health Timeline (Full width) */}
+            {/* LATEST FOLLOW-UP */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] transition-all duration-300"
+            >
+              <h3 className="font-heading font-bold text-lg text-nuraText mb-5">
+                Latest Follow-up
+              </h3>
+
+              {isLoadingFollowUp ? (
+                <div className="py-8 text-center" aria-busy="true">
+                  <p className="text-sm font-medium text-nuraTextSecondary">Loading latest follow-up...</p>
+                </div>
+              ) : latestFollowUp ? (
+                <div className="space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <p className="font-heading font-extrabold text-2xl text-nuraText">
+                      {latestFollowUp.progress}
+                    </p>
+                    <time className="text-xs font-semibold text-nuraTextSecondary/70">
+                      {new Date(latestFollowUp.created_at).toLocaleString()}
+                    </time>
+                  </div>
+
+                  {(latestFollowUp.current_symptoms?.trim() || latestFollowUp.medicine_compliance?.trim()) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {latestFollowUp.current_symptoms?.trim() && (
+                        <div className="bg-gray-50/60 p-4 rounded-2xl border border-gray-100/80 space-y-1.5">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/60">
+                            Current Symptoms
+                          </p>
+                          <p className="text-sm text-nuraText whitespace-pre-line">
+                            {latestFollowUp.current_symptoms}
+                          </p>
+                        </div>
+                      )}
+                      {latestFollowUp.medicine_compliance?.trim() && (
+                        <div className="bg-gray-50/60 p-4 rounded-2xl border border-gray-100/80 space-y-1.5">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/60">
+                            Medicine Compliance
+                          </p>
+                          <p className="text-sm font-semibold text-nuraText">
+                            {latestFollowUp.medicine_compliance}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-8 text-center">
+                  <p className="text-sm font-medium text-nuraTextSecondary">No follow-up recorded yet.</p>
+                </div>
+              )}
+
+              <div className="pt-6 mt-6 border-t border-gray-100/80">
+                <button
+                  type="button"
+                  onClick={() => setActiveItem('health-timeline')}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
+                >
+                  <span>View Details</span>
+                  <span className="transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">→</span>
+                </button>
+              </div>
+            </motion.div>
+
+            {/* HEALTH TIMELINE (Full width) */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}

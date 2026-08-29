@@ -3,11 +3,27 @@ import { motion } from 'framer-motion';
 import { Button } from '../common/Button';
 import { Activity, Pill, HelpCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-interface FollowUpIntakeProps {
-  onComplete: () => void;
+export interface FollowUpIntakeValues {
+  progress: string;
+  currentSymptoms: string;
+  medicineCompliance: string;
+  medicineReason: string;
+  hasSideEffects: boolean;
+  sideEffectsText: string;
+  questions: string;
 }
 
-export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({ onComplete }) => {
+interface FollowUpIntakeProps {
+  onComplete: (values: FollowUpIntakeValues) => void;
+  isSaving?: boolean;
+  errorMessage?: string | null;
+}
+
+export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
+  onComplete,
+  isSaving = false,
+  errorMessage = null,
+}) => {
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<string>('Slightly Better');
   const [symptoms, setSymptoms] = useState('');
@@ -235,14 +251,28 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({ onComplete }) =>
         </div>
 
         {/* Bottom CTA */}
-        <div className="pt-2 pb-12 flex justify-center">
+        <div className="pt-2 pb-12 flex flex-col items-center gap-3">
+          {errorMessage && (
+            <p className="text-sm font-medium text-red-600 text-center" role="alert">
+              {errorMessage}
+            </p>
+          )}
           <Button
             variant="primary"
             size="lg"
-            onClick={onComplete}
+            onClick={() => onComplete({
+              progress,
+              currentSymptoms: symptoms,
+              medicineCompliance: medCompliance,
+              medicineReason: medReason,
+              hasSideEffects,
+              sideEffectsText,
+              questions,
+            })}
+            disabled={isSaving}
             className="w-full sm:w-auto min-w-[220px] py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
-            Continue →
+            {isSaving ? 'Saving...' : 'Continue →'}
           </Button>
         </div>
 
