@@ -16,7 +16,7 @@ import type { FollowUpIntakeValues } from './components/onboarding/FollowUpIntak
 import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { LoginPage } from './components/auth/LoginPage';
 import { supabase } from './lib/supabase';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 
 interface PreviousSymptomEntry {
   id: string;
@@ -339,6 +339,18 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleAuthenticatedUserUpdated = (user: User) => {
+    setSession((currentSession) => currentSession
+      ? { ...currentSession, user }
+      : currentSession);
+  };
+
+  const handleSignedOut = () => {
+    setSession(null);
+    setCurrentView('landing');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -450,6 +462,9 @@ export const App: React.FC = () => {
         userFullName={typeof session.user.user_metadata.full_name === 'string'
           ? session.user.user_metadata.full_name
           : undefined}
+        userEmail={session.user.email}
+        onAuthenticatedUserUpdated={handleAuthenticatedUserUpdated}
+        onSignedOut={handleSignedOut}
       />
     );
   }

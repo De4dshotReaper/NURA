@@ -17,7 +17,9 @@ import { LabReportExplanationPage } from './LabReportExplanationPage';
 import { HealthTimelinePage } from './HealthTimelinePage';
 import { QuestionsPage } from './QuestionsPage';
 import { AppointmentDetailsPage } from './AppointmentDetailsPage';
+import { SettingsPage } from './SettingsPage';
 import { supabase } from '../../lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 interface NavItem {
   id: string;
@@ -154,6 +156,9 @@ interface DashboardLayoutProps {
   consultationSymptomEntryId?: string | null;
   userId?: string;
   userFullName?: string;
+  userEmail?: string;
+  onAuthenticatedUserUpdated?: (user: User) => void;
+  onSignedOut?: () => void;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -170,6 +175,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   consultationSymptomEntryId = null,
   userId,
   userFullName,
+  userEmail,
+  onAuthenticatedUserUpdated,
+  onSignedOut,
 }) => {
   const [activeItem, setActiveItem] = useState<string>(initialActiveItem);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -643,6 +651,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <LabReportExplanationPage onBackToDashboard={() => setActiveItem('dashboard')} />
         ) : activeItem === 'health-timeline' ? (
           <HealthTimelinePage onBackToDashboard={() => setActiveItem('dashboard')} />
+        ) : activeItem === 'settings' && onAuthenticatedUserUpdated && onSignedOut ? (
+          <SettingsPage
+            fullName={userFullName ?? ''}
+            email={userEmail ?? ''}
+            onBackToDashboard={() => setActiveItem('dashboard')}
+            onUserUpdated={onAuthenticatedUserUpdated}
+            onSignedOut={onSignedOut}
+          />
         ) : activeItem === 'questions' && questionSymptomEntryId && userId ? (
           <QuestionsPage
             symptomEntryId={questionSymptomEntryId}
