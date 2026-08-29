@@ -8,6 +8,7 @@ import {
   HelpCircle,
   Pill,
   FileText,
+  List,
   Settings as SettingsIcon,
   Menu,
   X,
@@ -15,6 +16,7 @@ import {
 import { MedicineInformationPage } from './MedicineInformationPage';
 import { LabReportExplanationPage } from './LabReportExplanationPage';
 import { HealthTimelinePage } from './HealthTimelinePage';
+import { HealthEpisodesPage } from './HealthEpisodesPage';
 import { QuestionsPage } from './QuestionsPage';
 import { AppointmentDetailsPage } from './AppointmentDetailsPage';
 import { SettingsPage } from './SettingsPage';
@@ -110,6 +112,7 @@ const mainNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'new-illness', label: 'New Illness', icon: Stethoscope },
   { id: 'follow-up', label: 'Follow-up Visit', icon: RotateCcw },
+  { id: 'health-episodes', label: 'Health Episodes', icon: List },
   { id: 'health-timeline', label: 'Health Timeline', icon: Clock },
 ];
 
@@ -181,6 +184,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const [activeItem, setActiveItem] = useState<string>(initialActiveItem);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [selectedHealthEpisodeId, setSelectedHealthEpisodeId] = useState<string | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<CurrentHealthEpisode | null>(null);
   const [isLoadingCurrentEpisode, setIsLoadingCurrentEpisode] = useState<boolean>(true);
   const [currentEpisodeError, setCurrentEpisodeError] = useState<string | null>(null);
@@ -520,6 +524,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   setMobileMenuOpen(false);
                   onStartQuestions?.();
                 } else {
+                  if (item.id === 'health-episodes') setSelectedHealthEpisodeId(null);
                   setActiveItem(item.id);
                   setMobileMenuOpen(false);
                 }
@@ -651,6 +656,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <LabReportExplanationPage onBackToDashboard={() => setActiveItem('dashboard')} />
         ) : activeItem === 'health-timeline' ? (
           <HealthTimelinePage onBackToDashboard={() => setActiveItem('dashboard')} />
+        ) : activeItem === 'health-episodes' && userId ? (
+          <HealthEpisodesPage
+            userId={userId}
+            selectedEpisodeId={selectedHealthEpisodeId}
+            onSelectEpisode={setSelectedHealthEpisodeId}
+            onBackToEpisodes={() => setSelectedHealthEpisodeId(null)}
+            onBackToDashboard={() => setActiveItem('dashboard')}
+            onStartNewEpisode={() => onStartNewIllness?.()}
+          />
         ) : activeItem === 'settings' && onAuthenticatedUserUpdated && onSignedOut ? (
           <SettingsPage
             fullName={userFullName ?? ''}
