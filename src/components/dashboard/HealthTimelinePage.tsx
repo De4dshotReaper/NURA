@@ -1,32 +1,93 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
-  FileText,
   Pill,
-  Calendar,
   Clock,
   ArrowLeft,
-  CheckCircle2,
-  HelpCircle,
-  TrendingUp,
   FileCheck,
   ChevronRight,
   ArrowDown
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import type { ExtractedMedicine, LabParameter } from '../../types';
 
 interface TimelineStep {
   id: string;
-  date: string;
-  time: string;
+  timestamp: string;
   title: string;
-  category: 'symptoms' | 'summary' | 'prescription' | 'lab' | 'followup' | 'progress' | 'questions';
+  category: 'symptoms' | 'prescription' | 'lab';
   description: string;
   details?: string[];
   badge?: string;
   badgeColor?: string;
   icon: React.ElementType;
 }
+
+interface SymptomRow {
+  id: string;
+  symptoms: string;
+  severity: number | null;
+  duration: string | null;
+  created_at: string;
+}
+
+interface PrescriptionRow {
+  id: string;
+  file_name: string;
+  file_type: string;
+  medicines: unknown;
+  uploaded_at: string;
+}
+
+interface LabReportRow {
+  id: string;
+  file_name: string;
+  report_type: string | null;
+  parameters: unknown;
+  uploaded_at: string;
+}
+
+interface TimelineGroup {
+  dateKey: string;
+  dateLabel: string;
+  events: TimelineStep[];
+}
+
+const getLocalDateKey = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDate = (timestamp: string): string =>
+  new Date(timestamp).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+const formatTime = (timestamp: string): string =>
+  new Date(timestamp).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+const summarizeMedicine = (medicine: ExtractedMedicine): string | null => {
+  const summary = [medicine.name, medicine.dosage, medicine.frequency, medicine.instructions]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join(' • ');
+  return summary || null;
+};
+
+const summarizeParameter = (parameter: LabParameter): string | null => {
+  const measuredValue = [parameter.value, parameter.unit].filter(Boolean).join(' ');
+  const summary = [parameter.name, measuredValue, parameter.status].filter(Boolean).join(' • ');
+  return summary || null;
+};
 
 interface HealthTimelinePageProps {
   onBackToDashboard?: () => void;
@@ -35,156 +96,143 @@ interface HealthTimelinePageProps {
 export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
   onBackToDashboard
 }) => {
-  const [selectedFilter, setSelectedFilter] = useState<'all' | '31 Jul' | '3 Aug'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [events, setEvents] = useState<TimelineStep[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const timelineGroup1: TimelineStep[] = [
-    {
-      id: 'step-1',
-      date: '31 Jul',
-      time: '07:15 PM',
-      title: 'Symptoms Recorded',
-      category: 'symptoms',
-      description: 'Initial entry logged for headache and throat discomfort with mild fever.',
-      details: [
-        'Symptoms: Headache, Throat pain, Body fatigue',
-        'Severity: 7 / 10',
-        'Duration: 2–3 Days'
-      ],
-      badge: 'Recorded',
-      badgeColor: 'bg-blue-50 text-primary border-blue-200/60',
-      icon: Activity
-    },
-    {
-      id: 'step-2',
-      date: '31 Jul',
-      time: '07:30 PM',
-      title: 'Consultation Summary Generated',
-      category: 'summary',
-      description: 'Clinical findings and consultation overview synthesized into clear patient insights.',
-      details: [
-        'Primary Diagnosis: Acute Upper Respiratory Infection',
-        'Recommendation: Rest, hydration, and completion of prescribed medication course.',
-        'Red Flags to Watch: High fever above 102°F or difficulty breathing.'
-      ],
-      badge: 'Summary Ready',
-      badgeColor: 'bg-teal-50 text-teal-700 border-teal-200/60',
-      icon: FileText
-    },
-    {
-      id: 'step-3',
-      date: '31 Jul',
-      time: '07:35 PM',
-      title: 'Prescription Added',
-      category: 'prescription',
-      description: '2 medications added to active treatment plan with plain-language usage instructions.',
-      details: [
-        'Paracetamol 650 mg — Thrice daily after meals for pain/fever',
-        'Amoxicillin 500 mg — Every 8 hours with water for bacterial coverage'
-      ],
-      badge: '2 Medications',
-      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
-      icon: Pill
-    },
-    {
-      id: 'step-4',
-      date: '31 Jul',
-      time: '07:45 PM',
-      title: 'Lab Report Uploaded',
-      category: 'lab',
-      description: 'Complete Blood Count (CBC) test report attached and simplified.',
-      details: [
-        'CBC_Report_31_Jul.pdf analyzed',
-        'White Blood Cell Count: Slightly elevated (11.2 x10^3/µL)',
-        'Hemoglobin & Platelets: Within normal reference range'
-      ],
-      badge: 'Report Analyzed',
-      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-      icon: FileCheck
-    },
-    {
-      id: 'step-5',
-      date: '31 Jul',
-      time: '08:00 PM',
-      title: 'Follow-up Scheduled',
-      category: 'followup',
-      description: 'Routine check-in scheduled to review symptom resolution and lab response.',
-      details: [
-        'Scheduled Date: Thursday, 3 Aug at 10:30 AM',
-        'Doctor: Dr. Sarah Jenkins (General Medicine)',
-        'Location: City Health Clinic'
-      ],
-      badge: 'Scheduled for 3 Aug',
-      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200/60',
-      icon: Calendar
-    }
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  const timelineGroup2: TimelineStep[] = [
-    {
-      id: 'step-6',
-      date: '3 Aug',
-      time: '10:30 AM',
-      title: 'Follow-up Started',
-      category: 'followup',
-      description: 'Follow-up consultation session initiated as scheduled.',
-      details: [
-        'Session Type: In-person Follow-up Consultation',
-        'Status: In Progress with Dr. Sarah Jenkins'
-      ],
-      badge: 'Visit Started',
-      badgeColor: 'bg-blue-50 text-primary border-blue-200/60',
-      icon: Calendar
-    },
-    {
-      id: 'step-7',
-      date: '3 Aug',
-      time: '10:40 AM',
-      title: 'Recovery Progress Recorded',
-      category: 'progress',
-      description: 'Patient symptom reassessment completed showing significant improvement.',
-      details: [
-        'Throat pain: Resolved (0/10)',
-        'Headache: Reduced significantly (2/10)',
-        'Energy level: Improved, fever subsiding'
-      ],
-      badge: 'Progress Saved',
-      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-      icon: TrendingUp
-    },
-    {
-      id: 'step-8',
-      date: '3 Aug',
-      time: '10:45 AM',
-      title: 'New Questions Generated',
-      category: 'questions',
-      description: 'Tailored queries prepared for discussion regarding medication completion and remaining symptoms.',
-      details: [
-        'Should I complete the remaining 2 days of Amoxicillin?',
-        'When can I safely resume regular exercise routines?',
-        'Do I need a repeat CBC blood test?'
-      ],
-      badge: '3 Questions Ready',
-      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200/60',
-      icon: HelpCircle
-    },
-    {
-      id: 'step-9',
-      date: '3 Aug',
-      time: '11:00 AM',
-      title: 'Updated Summary Created',
-      category: 'summary',
-      description: 'Comprehensive updated health overview incorporating follow-up outcomes.',
-      details: [
-        'Follow-up outcome: Excellent clinical recovery',
-        'Medication plan: Complete antibiotic course as prescribed',
-        'Next steps: No further immediate visits required unless symptoms recur'
-      ],
-      badge: 'Latest Summary',
-      badgeColor: 'bg-teal-50 text-teal-700 border-teal-200/60',
-      icon: CheckCircle2
-    }
-  ];
+    const loadSymptoms = async (): Promise<TimelineStep[]> => {
+      try {
+        const { data, error } = await supabase
+          .from('symptom_entries')
+          .select('id, symptoms, severity, duration, created_at');
+        if (error) {
+          console.error('Failed to load symptom entries for health timeline:', error);
+          return [];
+        }
+        return (data as SymptomRow[]).map((row) => ({
+          id: `symptom-${row.id}`,
+          timestamp: row.created_at,
+          title: 'Symptoms Recorded',
+          category: 'symptoms',
+          description: row.symptoms,
+          details: [
+              row.severity !== null ? `Severity: ${row.severity} / 10` : null,
+              row.duration ? `Duration: ${row.duration}` : null,
+            ].filter((detail): detail is string => Boolean(detail)),
+          badge: 'Recorded',
+          badgeColor: 'bg-blue-50 text-primary border-blue-200/60',
+          icon: Activity,
+        }));
+      } catch (error) {
+        console.error('Unexpected error loading symptom entries for health timeline:', error);
+        return [];
+      }
+    };
+
+    const loadPrescriptions = async (): Promise<TimelineStep[]> => {
+      try {
+        const { data, error } = await supabase
+          .from('prescriptions')
+          .select('id, file_name, file_type, medicines, uploaded_at');
+        if (error) {
+          console.error('Failed to load prescriptions for health timeline:', error);
+          return [];
+        }
+        return (data as PrescriptionRow[]).map((row) => {
+          const medicines = Array.isArray(row.medicines) ? row.medicines as ExtractedMedicine[] : [];
+          const details = medicines
+            .map(summarizeMedicine)
+            .filter((detail): detail is string => Boolean(detail));
+          return {
+            id: `prescription-${row.id}`,
+            timestamp: row.uploaded_at,
+            title: 'Prescription Added',
+            category: 'prescription' as const,
+            description: `${row.file_name} (${row.file_type})`,
+            details: details.length > 0 ? details : undefined,
+            badge: medicines.length > 0
+              ? `${medicines.length} ${medicines.length === 1 ? 'Medication' : 'Medications'}`
+              : undefined,
+            badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
+            icon: Pill,
+          };
+        });
+      } catch (error) {
+        console.error('Unexpected error loading prescriptions for health timeline:', error);
+        return [];
+      }
+    };
+
+    const loadLabReports = async (): Promise<TimelineStep[]> => {
+      try {
+        const { data, error } = await supabase
+          .from('lab_reports')
+          .select('id, file_name, report_type, parameters, uploaded_at');
+        if (error) {
+          console.error('Failed to load lab reports for health timeline:', error);
+          return [];
+        }
+        return (data as LabReportRow[]).map((row) => {
+          const parameters = Array.isArray(row.parameters) ? row.parameters as LabParameter[] : [];
+          return {
+            id: `lab-${row.id}`,
+            timestamp: row.uploaded_at,
+            title: 'Lab Report Uploaded',
+            category: 'lab' as const,
+            description: row.report_type ? `${row.report_type} — ${row.file_name}` : row.file_name,
+            details: parameters.length > 0 ? parameters
+              .slice(0, 3)
+              .map(summarizeParameter)
+              .filter((detail): detail is string => Boolean(detail)) : undefined,
+            badge: 'Report Analyzed',
+            badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+            icon: FileCheck,
+          };
+        });
+      } catch (error) {
+        console.error('Unexpected error loading lab reports for health timeline:', error);
+        return [];
+      }
+    };
+
+    const loadTimeline = async () => {
+      const results = await Promise.all([loadSymptoms(), loadPrescriptions(), loadLabReports()]);
+      if (!isMounted) return;
+      setEvents(results.flat());
+      setIsLoading(false);
+    };
+
+    void loadTimeline();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const groupedEvents = events.reduce<Map<string, TimelineStep[]>>((groups, event) => {
+    const dateKey = getLocalDateKey(event.timestamp);
+    const group = groups.get(dateKey) ?? [];
+    group.push(event);
+    groups.set(dateKey, group);
+    return groups;
+  }, new Map());
+
+  const timelineGroups: TimelineGroup[] = Array.from(groupedEvents.entries())
+    .map(([dateKey, dateEvents]) => ({
+      dateKey,
+      dateLabel: formatDate(dateEvents[0].timestamp),
+      events: dateEvents.sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      ),
+    }))
+    .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+
+  const visibleGroups = selectedFilter === 'all'
+    ? timelineGroups
+    : timelineGroups.filter((group) => group.dateKey === selectedFilter);
 
   const toggleExpand = (id: string) => {
     setExpandedId(prev => (prev === id ? null : id));
@@ -228,7 +276,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
 
                 <div className="flex items-center gap-2 text-xs font-medium text-nuraTextSecondary/70 pt-1">
                   <Clock className="w-3.5 h-3.5 opacity-70" />
-                  <span>{step.date} • {step.time}</span>
+                  <span>{formatDate(step.timestamp)} • {formatTime(step.timestamp)}</span>
                 </div>
               </div>
             </div>
@@ -305,7 +353,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
       </div>
 
       {/* Date Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
+      <div className="flex items-center gap-2 flex-wrap border-b border-gray-100 pb-4">
         <button
           onClick={() => setSelectedFilter('all')}
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
@@ -316,75 +364,55 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
         >
           All Events (Full Journey)
         </button>
-        <button
-          onClick={() => setSelectedFilter('31 Jul')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-            selectedFilter === '31 Jul'
-              ? 'bg-primary text-white shadow-md shadow-blue-500/20'
-              : 'bg-gray-50 text-nuraTextSecondary hover:text-nuraText hover:bg-gray-100'
-          }`}
-        >
-          31 Jul (Initial Visit)
-        </button>
-        <button
-          onClick={() => setSelectedFilter('3 Aug')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-            selectedFilter === '3 Aug'
-              ? 'bg-primary text-white shadow-md shadow-blue-500/20'
-              : 'bg-gray-50 text-nuraTextSecondary hover:text-nuraText hover:bg-gray-100'
-          }`}
-        >
-          3 Aug (Follow-up Review)
-        </button>
+        {timelineGroups.map((group) => (
+          <button
+            key={group.dateKey}
+            onClick={() => setSelectedFilter(group.dateKey)}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              selectedFilter === group.dateKey
+                ? 'bg-primary text-white shadow-md shadow-blue-500/20'
+                : 'bg-gray-50 text-nuraTextSecondary hover:text-nuraText hover:bg-gray-100'
+            }`}
+          >
+            {group.dateLabel}
+          </button>
+        ))}
       </div>
 
       {/* Timeline Flow */}
       <div className="space-y-10">
-        {/* Section 1: 31 Jul */}
-        {(selectedFilter === 'all' || selectedFilter === '31 Jul') && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="px-3.5 py-1.5 rounded-xl bg-blue-100/80 text-primary font-heading font-extrabold text-sm sm:text-base tracking-tight border border-blue-200/50">
-                31 Jul
-              </div>
-              <div className="h-[1px] flex-1 bg-gray-100" />
-            </div>
-
-            <div className="space-y-2">
-              {timelineGroup1.map((step, idx) =>
-                renderTimelineItem(step, idx === timelineGroup1.length - 1 && selectedFilter !== 'all')
+        {isLoading ? (
+          <div className="bg-white rounded-[1.75rem] p-10 text-center border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+            <p className="text-sm font-medium text-nuraTextSecondary">Loading health events...</p>
+          </div>
+        ) : visibleGroups.length === 0 ? (
+          <div className="bg-white rounded-[1.75rem] p-10 text-center border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+            <p className="text-sm font-medium text-nuraTextSecondary">No health events recorded yet.</p>
+          </div>
+        ) : (
+          visibleGroups.map((group, groupIndex) => (
+            <React.Fragment key={group.dateKey}>
+              {groupIndex > 0 && (
+                <div className="flex flex-col items-center justify-center py-2">
+                  <div className="w-[1px] h-12 bg-gradient-to-b from-primary/30 via-primary to-primary/30" />
+                </div>
               )}
-            </div>
-          </div>
-        )}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="px-3.5 py-1.5 rounded-xl bg-blue-100/80 text-primary font-heading font-extrabold text-sm sm:text-base tracking-tight border border-blue-200/50">
+                    {group.dateLabel}
+                  </div>
+                  <div className="h-[1px] flex-1 bg-gray-100" />
+                </div>
 
-        {/* Transition Arrow between 31 Jul and 3 Aug if both shown */}
-        {selectedFilter === 'all' && (
-          <div className="flex flex-col items-center justify-center py-2 space-y-1">
-            <div className="w-[1px] h-8 bg-gradient-to-b from-primary/30 to-primary" />
-            <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider border border-primary/20">
-              3 Days Progress
-            </div>
-            <div className="w-[1px] h-8 bg-gradient-to-b from-primary to-primary/30" />
-          </div>
-        )}
-
-        {/* Section 2: 3 Aug */}
-        {(selectedFilter === 'all' || selectedFilter === '3 Aug') && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="px-3.5 py-1.5 rounded-xl bg-teal-100/80 text-teal-800 font-heading font-extrabold text-sm sm:text-base tracking-tight border border-teal-200/50">
-                3 Aug
+                <div className="space-y-2">
+                  {group.events.map((step, index) =>
+                    renderTimelineItem(step, index === group.events.length - 1)
+                  )}
+                </div>
               </div>
-              <div className="h-[1px] flex-1 bg-gray-100" />
-            </div>
-
-            <div className="space-y-2">
-              {timelineGroup2.map((step, idx) =>
-                renderTimelineItem(step, idx === timelineGroup2.length - 1)
-              )}
-            </div>
-          </div>
+            </React.Fragment>
+          ))
         )}
       </div>
     </motion.div>
