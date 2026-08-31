@@ -1,20 +1,70 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, HelpCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 
 interface FAQItem {
   question: string;
   answer: string;
 }
 
-export const FAQ: React.FC = () => {
+interface FAQProps {
+  session: Session | null;
+  onSignIn: () => void;
+}
+
+export const FAQ: React.FC<FAQProps> = ({ session, onSignIn }) => {
   const { t } = useTranslation();
   const faqData = t('faq.items', { returnObjects: true }) as FAQItem[];
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const feedbackSubmissionRef = useRef(false);
 
   const toggleAccordion = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
+  };
+
+  const handleFeedbackSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (feedbackSubmissionRef.current || isSubmittingFeedback || !session?.user) return;
+
+    const message = feedbackMessage.trim();
+    if (!message) {
+      setFeedbackError(t('feedback.emptyError'));
+      return;
+    }
+    if (message.length > 2000) {
+      setFeedbackError(t('feedback.lengthError'));
+      return;
+    }
+
+    feedbackSubmissionRef.current = true;
+    setIsSubmittingFeedback(true);
+    setFeedbackError(null);
+    try {
+      const { error } = await supabase.from('feedback').insert({
+        user_id: session.user.id,
+        message,
+      });
+      if (error) {
+        console.error('Failed to submit feedback:', error);
+        setFeedbackError(t('feedback.submitError'));
+        return;
+      }
+      setFeedbackMessage('');
+      setFeedbackSubmitted(true);
+    } catch (error) {
+      console.error('Unexpected error submitting feedback:', error);
+      setFeedbackError(t('feedback.submitError'));
+    } finally {
+      feedbackSubmissionRef.current = false;
+      setIsSubmittingFeedback(false);
+    }
   };
 
   return (
@@ -82,6 +132,50 @@ export const FAQ: React.FC = () => {
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-16 md:mt-20 rounded-[1.75rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+          <div className="mx-auto max-w-2xl space-y-6">
+            <div className="space-y-2 text-center">
+              <h3 className="font-heading text-2xl sm:text-3xl font-extrabold text-nuraText">{t('feedback.title')}</h3>
+              <p className="text-sm sm:text-base leading-relaxed text-nuraTextSecondary">{t('feedback.description')}</p>
+            </div>
+
+            {feedbackSubmitted ? (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-6 text-center space-y-1" role="status">
+                <p className="font-heading font-bold text-emerald-900">{t('feedback.success')}</p>
+                <p className="text-sm text-emerald-800">{t('feedback.successHelp')}</p>
+              </div>
+            ) : session?.user ? (
+              <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                <textarea
+                  value={feedbackMessage}
+                  onChange={(event) => {
+                    setFeedbackMessage(event.target.value);
+                    if (feedbackError) setFeedbackError(null);
+                  }}
+                  maxLength={2000}
+                  rows={6}
+                  disabled={isSubmittingFeedback}
+                  placeholder={t('feedback.placeholder')}
+                  className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50/40 p-4 text-sm text-nuraText placeholder:text-nuraTextSecondary/50 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60"
+                />
+                {feedbackError && <p className="text-sm font-medium text-red-700" role="alert">{feedbackError}</p>}
+                <div className="flex justify-end">
+                  <button type="submit" disabled={isSubmittingFeedback || !feedbackMessage.trim()} className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/10 transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
+                    {isSubmittingFeedback ? t('feedback.sending') : t('feedback.send')}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-6 text-center space-y-4">
+                <p className="text-sm text-nuraTextSecondary">{t('feedback.signInRequired')}</p>
+                <button type="button" onClick={onSignIn} className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
+                  {t('feedback.signIn')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>

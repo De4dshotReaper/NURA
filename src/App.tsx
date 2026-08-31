@@ -707,7 +707,13 @@ export const App: React.FC = () => {
             <Hero />
             <HowItWorks />
             <Features />
-            <FAQ />
+            <FAQ
+              session={session}
+              onSignIn={() => {
+                setCurrentView('login');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
           </main>
         </>
       )}

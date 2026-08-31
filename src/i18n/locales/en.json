@@ -1,5 +1,6 @@
 {
   "heroCta": { "primary": "Start Your Health Journey", "secondary": "See How It Works" },
+  "feedback": { "title":"Help us improve Nura", "description":"Found something confusing, encountered a problem, or have an idea for Nura? We'd love to hear it.", "placeholder":"Share your feedback...", "send":"Send Feedback", "sending":"Sending...", "success":"Thanks for your feedback.", "successHelp":"Your response has been received.", "emptyError":"Please enter your feedback before sending.", "lengthError":"Feedback must be 2000 characters or fewer.", "submitError":"Your feedback couldn't be sent. Please try again.", "signInRequired":"Sign in to your Nura account to send feedback.", "signIn":"Sign In to Send Feedback" },
   "fileActions": { "downloadOriginal":"Download Original", "opening":"Opening...", "downloading":"Downloading...", "downloadSuccess":"Original file downloaded successfully.", "viewError":"The original file couldn't be opened. Please try again.", "downloadError":"The original file couldn't be downloaded. Please try again.", "olderUnavailable":"The original file is not available for this older record." },
   "prescriptionLatest": { "title":"Latest Prescription Summary", "subtitle":"A summary of your most recently uploaded prescription." },
   "auditPreview": { "visited":"Visited", "notes":"Notes", "rxGuide":"Rx Guide", "explained":"Explained" },
