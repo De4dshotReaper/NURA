@@ -102,39 +102,36 @@ Gemini is accessed through server-side Supabase Edge Functions rather than direc
 ---
 
 ## 🏗️ Architecture
-flowchart TD
-    U["👤 Patient / User"]
-
-    subgraph FE["Frontend — Vercel"]
-        F["React + TypeScript<br/>Tailwind CSS + Vite"]
-    end
-
-    subgraph BE["Backend — Supabase"]
-        AUTH["Authentication"]
-        DB[("PostgreSQL<br/>Profiles · Consultations<br/>Symptoms · Medicines · Tests")]
-        RLS["Row Level Security"]
-        EF["Edge Functions"]
-    end
-
-    AI["🤖 Google Gemini API"]
-
-    U --> F
-    F --> AUTH
-    F -->|RLS-scoped queries| DB
-    RLS -. protects .-> DB
-    F --> EF
-    EF -->|API calls| AI
-    EF --> DB
-
-    classDef frontend fill:#10b981,stroke:#059669,color:#fff
-    classDef backend fill:#3ecf8e,stroke:#1a7f5a,color:#fff
-    classDef ai fill:#4285f4,stroke:#1a56c4,color:#fff
-    classDef user fill:#f3f4f6,stroke:#9ca3af,color:#111
-
-    class F frontend
-    class AUTH,DB,RLS,EF backend
-    class AI ai
-    class U user
+                              ┌─────────────────────┐
+                         │        USER         │
+                                └──────────┬──────────┘
+                 │
+                 \/
+                    ┌───────────────────────────┐
+                    │         FRONTEND          │
+                    │                           │
+                    │  React + TypeScript       │
+                    │  Tailwind CSS + Vite      │
+                    │                           │
+                    │     Hosted on Vercel      │
+                    └─────────────┬─────────────┘
+                    │
+                    ▼
+                    ┌───────────────────────────┐
+                    │          SUPABASE         │
+                    │                           │
+                    │  • Authentication         │
+                    │  • PostgreSQL Database    │
+                    │  • Row Level Security     │
+                    │  • Edge Functions         │
+                    └─────────────┬─────────────┘
+                  │
+                  ▼
+                    ┌───────────────────────────┐
+                    │       GOOGLE GEMINI       │
+                    │                           │
+                    │    AI Processing & OCR    │
+                    └───────────────────────────┘
 
 ## 🔐 Data & Security
 
