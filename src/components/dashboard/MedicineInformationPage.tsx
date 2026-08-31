@@ -1,20 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pill, FileText, CheckCircle2, Clock, Calendar, Sun, Shield, ArrowLeft, AlertCircle, X } from 'lucide-react';
+import { Pill, FileText, CheckCircle2, Clock, Calendar, Shield, ArrowLeft, AlertCircle, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { PrescriptionSummaryPage } from './PrescriptionSummaryPage';
 import type { ExtractedMedicine } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { normalizeLanguage } from '../../i18n';
+import { languageLocale, normalizeLanguage } from '../../i18n';
+import { removePrivateMedicalFile, uploadPrivateMedicalFile } from '../../lib/privateMedicalFiles';
 
 interface PrescriptionItem {
   id: string;
-  date: string;
   fileType: string;
   title: string;
   uploadedAt: string;
   rawText: string | null;
   medicines: ExtractedMedicine[];
+  storagePath: string | null;
 }
 
 interface PrescriptionRow {
@@ -24,22 +25,17 @@ interface PrescriptionRow {
   raw_text: string | null;
   medicines: unknown;
   uploaded_at: string;
+  storage_path: string | null;
 }
 
 const toPrescriptionItem = (row: PrescriptionRow): PrescriptionItem => ({
   id: row.id,
   title: row.file_name,
   fileType: row.file_type,
-  date: new Date(row.uploaded_at).toLocaleString('en-US', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }),
   uploadedAt: row.uploaded_at,
   rawText: row.raw_text,
   medicines: Array.isArray(row.medicines) ? row.medicines as ExtractedMedicine[] : [],
+  storagePath: row.storage_path ?? null,
 });
 
 interface PrescriptionResponse {
@@ -60,13 +56,15 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 }) => {
   const { t, i18n } = useTranslation();
   const language = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
+  const locale = languageLocale[language];
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
+  const [latestPrescription, setLatestPrescription] = useState<PrescriptionItem | null>(null);
+  const [isLoadingLatestPrescription, setIsLoadingLatestPrescription] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [activeSummaryRx, setActiveSummaryRx] = useState<PrescriptionItem | null>(null);
-  const [hasUploaded, setHasUploaded] = useState(true);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<PrescriptionResponse | null>(null);
@@ -76,33 +74,68 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedPrescriptionIdRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    if (!showSuccess) return;
+    const timer = window.setTimeout(() => setShowSuccess(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [showSuccess]);
+
   const addPrescriptionToHistory = (prescription: PrescriptionItem) => {
     setPrescriptions((currentPrescriptions) => [
       prescription,
       ...currentPrescriptions.filter((currentPrescription) => currentPrescription.id !== prescription.id),
     ].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()));
+    setLatestPrescription((currentLatest) => !currentLatest || new Date(prescription.uploadedAt).getTime() >= new Date(currentLatest.uploadedAt).getTime()
+      ? prescription
+      : currentLatest);
   };
+
+  const formatUploadedAt = (value: string) => new Date(value).toLocaleString(locale, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
   useEffect(() => {
     let isMounted = true;
 
     const loadPrescriptionHistory = async () => {
+      setIsLoadingLatestPrescription(true);
       try {
-        const { data, error } = await supabase
-          .from('prescriptions')
-          .select('id, file_name, file_type, raw_text, medicines, uploaded_at')
-          .order('uploaded_at', { ascending: false });
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData.user) {
+          if (isMounted) setErrorMessage(t('documentErrors.history'));
+          return;
+        }
+
+        const [historyResult, latestResult] = await Promise.all([
+          supabase
+            .from('prescriptions')
+            .select('id, file_name, file_type, raw_text, medicines, uploaded_at, storage_path')
+            .eq('user_id', userData.user.id)
+            .order('uploaded_at', { ascending: false }),
+          supabase
+            .from('prescriptions')
+            .select('id, file_name, file_type, raw_text, medicines, uploaded_at, storage_path')
+            .eq('user_id', userData.user.id)
+            .order('uploaded_at', { ascending: false })
+            .limit(1)
+            .maybeSingle<PrescriptionRow>(),
+        ]);
 
         if (!isMounted) {
           return;
         }
 
-        if (error) {
+        if (historyResult.error || latestResult.error) {
           setErrorMessage(t('documentErrors.history'));
           return;
         }
 
-        const savedPrescriptions = (data as PrescriptionRow[]).map(toPrescriptionItem);
+        const savedPrescriptions = (historyResult.data as PrescriptionRow[]).map(toPrescriptionItem);
+        setLatestPrescription(latestResult.data ? toPrescriptionItem(latestResult.data) : null);
         setPrescriptions((currentPrescriptions) => {
           const prescriptionsById = new Map(currentPrescriptions.map((prescription) => [prescription.id, prescription]));
           savedPrescriptions.forEach((prescription) => prescriptionsById.set(prescription.id, prescription));
@@ -114,6 +147,8 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         if (isMounted) {
           setErrorMessage(t('documentErrors.history'));
         }
+      } finally {
+        if (isMounted) setIsLoadingLatestPrescription(false);
       }
     };
 
@@ -122,19 +157,22 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const persistProcessedPrescription = async ({
     fileName,
     fileType,
     rawText,
     medicines,
+    file,
   }: {
     fileName: string;
-    fileType: 'JPG' | 'PNG';
+    fileType: 'PDF' | 'JPG' | 'PNG';
     rawText: string | null;
     medicines: ExtractedMedicine[];
+    file: File;
   }) => {
+    let storagePath: string | null = null;
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -142,28 +180,52 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         return null;
       }
 
+      storagePath = await uploadPrivateMedicalFile('prescriptions', user.id, file);
+
       const { data, error } = await supabase.from('prescriptions').insert({
         user_id: user.id,
         file_name: fileName,
         file_type: fileType,
         raw_text: rawText,
         medicines,
-      }).select('id, file_name, file_type, raw_text, medicines, uploaded_at').single();
+        storage_path: storagePath,
+      }).select('id, file_name, file_type, raw_text, medicines, uploaded_at, storage_path').single();
 
       if (error || !data) {
+        const { data: existing } = await supabase
+          .from('prescriptions')
+          .select('id, file_name, file_type, raw_text, medicines, uploaded_at, storage_path')
+          .eq('user_id', user.id)
+          .eq('storage_path', storagePath)
+          .maybeSingle<PrescriptionRow>();
+        if (existing) {
+          const savedPrescription = toPrescriptionItem(existing);
+          addPrescriptionToHistory(savedPrescription);
+          return savedPrescription;
+        }
+        await removePrivateMedicalFile('prescriptions', storagePath);
         return null;
       }
 
       const savedPrescription = toPrescriptionItem(data as PrescriptionRow);
       addPrescriptionToHistory(savedPrescription);
       return savedPrescription;
-    } catch {
+    } catch (error) {
+      if (storagePath) {
+        try { await removePrivateMedicalFile('prescriptions', storagePath); }
+        catch (cleanupError) { console.error('Failed to clean up prescription storage object:', cleanupError); }
+      }
+      console.error('Failed to persist prescription and original file:', error);
       return null;
     }
   };
 
   const handleDeletePrescription = async (prescriptionId: string) => {
     try {
+      const prescription = prescriptions.find((item) => item.id === prescriptionId);
+      if (prescription?.storagePath) {
+        await removePrivateMedicalFile('prescriptions', prescription.storagePath);
+      }
       const { error } = await supabase
         .from('prescriptions')
         .delete()
@@ -176,6 +238,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
       setPrescriptions((currentPrescriptions) =>
         currentPrescriptions.filter((prescription) => prescription.id !== prescriptionId)
       );
+      setLatestPrescription((currentLatest) => {
+        if (currentLatest?.id !== prescriptionId) return currentLatest;
+        return prescriptions.filter((prescription) => prescription.id !== prescriptionId)[0] ?? null;
+      });
       setActiveSummaryRx((currentPrescription) =>
         currentPrescription?.id === prescriptionId ? null : currentPrescription
       );
@@ -229,22 +295,32 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
     const newRx: PrescriptionItem = {
       id: Date.now().toString(),
-      date: new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
       fileType: detectedType,
       title: file.name,
       uploadedAt: new Date().toISOString(),
       rawText: null,
       medicines: [],
+      storagePath: null,
     };
 
-    setHasUploaded(true);
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-    }, 2000);
+    setShowSuccess(false);
 
     if (detectedType === 'PDF') {
       setPdfMessage(t('documentErrors.pdf'));
+      const savedPrescription = await persistProcessedPrescription({
+        fileName: file.name,
+        fileType: detectedType,
+        rawText: null,
+        medicines: [],
+        file,
+      });
+      if (savedPrescription) {
+        setProcessedPrescriptionId(savedPrescription.id);
+        processedPrescriptionIdRef.current = savedPrescription.id;
+        setShowSuccess(true);
+      } else {
+        setErrorMessage(t('documentErrors.savePrescription'));
+      }
     } else {
       setOcrLoading(true);
       try {
@@ -324,10 +400,12 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                   fileType: detectedType,
                   rawText: prescriptionData.rawText,
                   medicines: enrichedMedicines,
+                  file,
                 });
 
                 if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
                   setProcessedPrescriptionId(savedPrescription.id);
+                  setShowSuccess(true);
                 } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
                   setErrorMessage(t('documentErrors.savePrescription'));
                 }
@@ -341,10 +419,12 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                   fileType: detectedType,
                   rawText: prescriptionData.rawText,
                   medicines: prescriptionData.medicines,
+                  file,
                 });
 
                 if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
                   setProcessedPrescriptionId(savedPrescription.id);
+                  setShowSuccess(true);
                 } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
                   setErrorMessage(`${t('documentErrors.medicineUnavailable')} ${t('documentErrors.savePrescription')}`);
                 }
@@ -361,10 +441,12 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
             fileType: detectedType,
             rawText: prescriptionData.rawText,
             medicines: prescriptionData.medicines,
+            file,
           });
 
           if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
             setProcessedPrescriptionId(savedPrescription.id);
+            setShowSuccess(true);
           } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
             setErrorMessage(t('documentErrors.savePrescription'));
           }
@@ -394,9 +476,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
       <PrescriptionSummaryPage
         onBack={() => setActiveSummaryRx(null)}
         prescriptionTitle={activeSummaryRx.title}
-        uploadDate={activeSummaryRx.date}
+        uploadDate={formatUploadedAt(activeSummaryRx.uploadedAt)}
         fileType={activeSummaryRx.fileType}
         medicines={activeSummaryRx.medicines}
+        storagePath={activeSummaryRx.storagePath}
         isExplanationLoading={activeSummaryRx.id === processedPrescriptionId && isExplanationLoading}
       />
     );
@@ -546,25 +629,21 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-              {t('documents.prescriptionSummary')}
+              {t('prescriptionLatest.title')}
             </h2>
             <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary">
-              {t('documents.summaryHelp')}
+              {t('prescriptionLatest.subtitle')}
             </p>
           </div>
-          <button
-            onClick={() => setHasUploaded(!hasUploaded)}
-            className="text-xs text-nuraTextSecondary/60 hover:text-nuraText transition-colors"
-            title={t('audit.demoToggle')}
-          >
-            {hasUploaded ? 'Show Empty State' : 'Show Populated Summary'}
-          </button>
         </div>
 
-        {hasUploaded ? (
+        {isLoadingLatestPrescription ? (
+          <div className="bg-white rounded-[1.75rem] p-12 text-center border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+            <p className="text-sm font-medium text-nuraTextSecondary" aria-busy="true">{t('common.loading')}</p>
+          </div>
+        ) : latestPrescription ? (
           <div className="bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-8">
-            {/* Four Statistic Blocks in a Responsive Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pb-6 border-b border-gray-100">
+            <div className="grid grid-cols-2 gap-6 pb-6 border-b border-gray-100">
               {/* Stat 1: Medicines Detected */}
               <div className="space-y-2">
                 <div className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-nuraText">
@@ -575,42 +654,11 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                     {t('documents.medicinesDetected')}
                   </div>
                   <div className="font-heading font-bold text-lg sm:text-xl text-nuraText">
-                    {extractedData ? extractedData.medicines.length : 3} Medicines
+                    {t('summaryUi.detected', { count: latestPrescription.medicines.length })}
                   </div>
                 </div>
               </div>
 
-              {/* Stat 2: Estimated Duration */}
-              <div className="space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-nuraText">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                    {t('documents.estimatedDuration')}
-                  </div>
-                  <div className="font-heading font-bold text-lg sm:text-xl text-nuraText">
-                    5 Days
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 3: Daily Schedule */}
-              <div className="space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-nuraText">
-                  <Sun className="w-4 h-4" />
-                </div>
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                    {t('documents.dailySchedule')}
-                  </div>
-                  <div className="font-heading font-bold text-sm sm:text-base text-nuraText truncate">
-                    Morning • Afternoon • Night
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 4: Uploaded */}
               <div className="space-y-2">
                 <div className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-nuraText">
                   <FileText className="w-4 h-4" />
@@ -620,7 +668,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                     {t('documents.uploaded')}
                   </div>
                   <div className="font-heading font-bold text-sm sm:text-base text-nuraText truncate">
-                    Today • 2:14 PM
+                    {formatUploadedAt(latestPrescription.uploadedAt)}
                   </div>
                 </div>
               </div>
@@ -632,48 +680,19 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 {t('documents.detectedMedicines')}
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                {extractedData ? (
-                  extractedData.medicines.map((med, idx) => (
+                {latestPrescription.medicines.length > 0 ? (
+                  latestPrescription.medicines.map((med, idx) => (
                     <span key={idx} className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
                       {med.name || t('documents.notSpecified')} {med.dosage ? `(${med.dosage})` : ''}
                     </span>
                   ))
-                ) : (
-                  <>
-                    <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                      Paracetamol 650 mg
-                    </span>
-                    <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                      Amoxicillin 500 mg
-                    </span>
-                    <span className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                      Vitamin D3
-                    </span>
-                  </>
-                )}
+                ) : <span className="text-xs text-nuraTextSecondary">{t('documents.notSpecified')}</span>}
               </div>
             </div>
 
-            {/* Status Footer */}
-            <div className="pt-2 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                {t('documents.processed')}
-              </span>
-
+            <div className="pt-2 flex items-center justify-end">
               <button
-                onClick={() => {
-                  const processedPrescription = prescriptions.find((rx) => rx.id === processedPrescriptionId);
-                  setActiveSummaryRx(processedPrescription ?? {
-                    id: 'preview',
-                    date: 'Today',
-                    fileType: 'PDF',
-                    title: 'Prescription_Summary.pdf',
-                    uploadedAt: new Date().toISOString(),
-                    rawText: null,
-                    medicines: extractedData?.medicines ?? [],
-                  });
-                }}
+                onClick={() => setActiveSummaryRx(latestPrescription)}
                 className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
                 {t('documents.openMedicine')} →
@@ -730,7 +749,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                       {rx.title}
                     </h4>
                     <p className="font-sans text-xs text-nuraTextSecondary mt-0.5">
-                      {rx.date} • <span className="uppercase font-semibold">{rx.fileType}</span>
+                      {formatUploadedAt(rx.uploadedAt)} • <span className="uppercase font-semibold">{rx.fileType}</span>
                     </p>
                   </div>
                 </div>

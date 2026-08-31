@@ -6,71 +6,90 @@ import {
   Pill, 
   CheckCircle2, 
   ChevronDown, 
-  ExternalLink, 
   AlertCircle,
   ArrowLeft,
   Download,
-  X,
+  ExternalLink,
   Clock,
   Shield,
   AlertTriangle
 } from 'lucide-react';
 import type { ExtractedMedicine } from '../../types';
 import { useTranslation } from 'react-i18next';
-
-const defaultMedicines: ExtractedMedicine[] = [
-  {
-    name: 'Paracetamol 650 mg',
-    dosage: '650 mg',
-    frequency: '3 x day',
-    instructions: null,
-    confidence: 'high',
-    whatItsFor: 'Commonly used to reduce fever and relieve mild to moderate pain.',
-    commonSideEffects: ['Mild nausea', 'Upset stomach', 'Drowsiness'],
-    thingsToRemember: ['Avoid exceeding the recommended daily dose.'],
-  },
-  {
-    name: 'Amoxicillin 500 mg',
-    dosage: '500 mg',
-    frequency: 'Every 8 hours',
-    instructions: null,
-    confidence: 'high',
-    whatItsFor: 'Commonly used to treat certain bacterial infections.',
-    commonSideEffects: ['Mild diarrhea', 'Nausea', 'Skin rash (if allergic)'],
-    thingsToRemember: ['Complete the full course as directed by your prescriber.'],
-  },
-];
+import { createPrivateMedicalFileUrl, downloadPrivateMedicalFile } from '../../lib/privateMedicalFiles';
 
 interface PrescriptionSummaryPageProps {
   onBack?: () => void;
-  prescriptionTitle?: string;
-  uploadDate?: string;
-  fileType?: string;
-  medicines?: ExtractedMedicine[];
+  prescriptionTitle: string;
+  uploadDate: string;
+  fileType: string;
+  medicines: ExtractedMedicine[];
+  storagePath: string | null;
   isExplanationLoading?: boolean;
 }
 
 export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = ({
   onBack,
-  prescriptionTitle = 'Prescription_31_Jul.pdf',
-  uploadDate = '31 Jul 2026',
-  fileType = 'PDF',
+  prescriptionTitle,
+  uploadDate,
+  fileType,
   medicines,
+  storagePath,
   isExplanationLoading = false,
 }) => {
   const { t } = useTranslation();
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
     '0': true, // First card open by default
   });
-  const [showOriginalModal, setShowOriginalModal] = useState(false);
-
-  const displayMedicines = medicines ?? defaultMedicines;
+  const [fileActionError, setFileActionError] = useState<string | null>(null);
+  const [downloadSucceeded, setDownloadSucceeded] = useState(false);
+  const [isViewingFile, setIsViewingFile] = useState(false);
+  const [isDownloadingFile, setIsDownloadingFile] = useState(false);
+  const displayMedicines = medicines;
 
   const toggleCard = (id: string) => {
     setExpandedCards(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
+  };
+
+  const handleViewOriginal = async () => {
+    if (!storagePath || isViewingFile) return;
+    const previewWindow = window.open('about:blank', '_blank');
+    setIsViewingFile(true);
+    setFileActionError(null);
+    try {
+      const signedUrl = await createPrivateMedicalFileUrl('prescriptions', storagePath);
+      if (previewWindow) {
+        previewWindow.opener = null;
+        previewWindow.location.href = signedUrl;
+      } else {
+        window.open(signedUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      previewWindow?.close();
+      console.error('Failed to open original prescription:', error);
+      setFileActionError(t('fileActions.viewError'));
+    } finally {
+      setIsViewingFile(false);
+    }
+  };
+
+  const handleDownloadOriginal = async () => {
+    if (!storagePath || isDownloadingFile) return;
+    setIsDownloadingFile(true);
+    setFileActionError(null);
+    setDownloadSucceeded(false);
+    try {
+      await downloadPrivateMedicalFile('prescriptions', storagePath, prescriptionTitle);
+      setDownloadSucceeded(true);
+    } catch (error) {
+      console.error('Failed to download original prescription:', error);
+      setFileActionError(t('fileActions.downloadError'));
+    } finally {
+      setIsDownloadingFile(false);
+    }
   };
 
   return (
@@ -133,14 +152,24 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
           </div>
         </div>
 
-        <button
-          onClick={() => setShowOriginalModal(true)}
-          className="px-5 py-2.5 rounded-xl border border-gray-200/80 bg-gray-50/50 hover:bg-gray-100/80 text-nuraText font-semibold text-sm transition-all duration-200 cursor-pointer inline-flex items-center gap-2 shadow-2xs"
-        >
-          <span>{t('documents.originalPrescription')}</span>
-          <ExternalLink className="w-4 h-4 opacity-60" />
-        </button>
       </motion.div>
+
+      {storagePath ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => void handleViewOriginal()} disabled={isViewingFile} className="px-5 py-2.5 rounded-xl border border-gray-200/80 bg-gray-50/50 hover:bg-gray-100/80 text-nuraText font-semibold text-sm transition-all disabled:opacity-50 inline-flex items-center gap-2">
+            <ExternalLink className="w-4 h-4 opacity-60" />
+            {isViewingFile ? t('fileActions.opening') : t('documents.originalPrescription')}
+          </button>
+          <button type="button" onClick={() => void handleDownloadOriginal()} disabled={isDownloadingFile} className="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            {isDownloadingFile ? t('fileActions.downloading') : t('fileActions.downloadOriginal')}
+          </button>
+        </div>
+      ) : (
+        <p className="text-sm text-nuraTextSecondary">{t('fileActions.olderUnavailable')}</p>
+      )}
+      {fileActionError && <p className="text-sm font-medium text-red-700" role="alert">{fileActionError}</p>}
+      {downloadSucceeded && <p className="text-sm font-medium text-emerald-700" role="status">{t('fileActions.downloadSuccess')}</p>}
 
       {/* MEDICINE CARDS SECTION */}
       <div className="space-y-6">
@@ -334,85 +363,6 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
         </div>
       </motion.div>
 
-      {/* ORIGINAL PRESCRIPTION MODAL */}
-      <AnimatePresence>
-        {showOriginalModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowOriginalModal(false)}
-              className="absolute inset-0 bg-slate-900/30 backdrop-blur-xs"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="relative bg-white rounded-[2rem] shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden z-10 p-6 sm:p-8 space-y-6"
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-bold text-lg text-nuraText">
-                      {prescriptionTitle}
-                    </h3>
-                    <p className="text-xs text-nuraTextSecondary">
-                      {t('summaryUi.uploadedOn', { date: uploadDate })}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowOriginalModal(false)}
-                  className="w-9 h-9 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-nuraTextSecondary transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Simulated Prescription Document View */}
-              <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200/80 space-y-6 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-white shadow-sm border border-gray-200 flex items-center justify-center text-primary mx-auto">
-                  <FileText className="w-8 h-8" />
-                </div>
-                <div className="space-y-2 max-w-sm mx-auto">
-                  <h4 className="font-heading font-bold text-xl text-nuraText">{t('documents.prescriptionSummary')}</h4>
-                  <div className="pt-4 text-left text-xs text-nuraText space-y-2 border-t border-gray-200">
-                    <p><strong>{t('documents.date')}:</strong> {uploadDate}</p>
-                    <p><strong>{t('documents.medicines')}:</strong></p>
-                    {displayMedicines.map((m, i) => (
-                      <p key={i}>{i + 1}. {m.name || t('documents.notSpecified')} — {m.dosage || t('documents.notSpecified')}, {m.frequency || t('documents.notSpecified')}</p>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  onClick={() => setShowOriginalModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-nuraText hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => {
-                    alert(t('summaryUi.downloaded'));
-                    setShowOriginalModal(false);
-                  }}
-                  className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-blue-600 transition-colors cursor-pointer inline-flex items-center gap-2 shadow-lg shadow-blue-500/10"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{t('documents.downloadPdf')}</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };

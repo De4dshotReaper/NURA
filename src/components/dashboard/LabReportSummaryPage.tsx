@@ -7,7 +7,7 @@ import {
   ChevronDown,
   ExternalLink,
   ArrowLeft,
-  X,
+  Download,
   Shield,
   AlertTriangle,
   Activity,
@@ -15,21 +15,24 @@ import {
 } from 'lucide-react';
 import { LabReportAnalysis, LabParameter } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { createPrivateMedicalFileUrl, downloadPrivateMedicalFile } from '../../lib/privateMedicalFiles';
 
 interface LabReportSummaryPageProps {
   onBack?: () => void;
-  reportTitle?: string;
-  uploadDate?: string;
-  fileType?: string;
-  analysisData?: LabReportAnalysis;
+  reportTitle: string;
+  uploadDate: string;
+  fileType: string;
+  analysisData: LabReportAnalysis;
+  storagePath: string | null;
 }
 
 export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
   onBack,
-  reportTitle = 'Lab_Report.pdf',
-  uploadDate = '31 July 2026',
-  fileType = 'PDF',
+  reportTitle,
+  uploadDate,
+  fileType,
   analysisData,
+  storagePath,
 }) => {
   const { t } = useTranslation();
   const displayStatus = (status?: string | null) => {
@@ -43,12 +46,52 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
   const reportType = analysisData?.reportType || t('summaryUi.notAvailable');
   const laboratory = analysisData?.laboratory || t('summaryUi.notAvailable');
   const reportDate = analysisData?.reportDate || uploadDate || t('summaryUi.notAvailable');
-  const rawText = analysisData?.rawText || null;
 
   const [expandedParams, setExpandedParams] = useState<Record<string, boolean>>(
     parameters.length > 0 ? { [parameters[0].id]: true } : {}
   );
-  const [showOriginalModal, setShowOriginalModal] = useState(false);
+  const [fileActionError, setFileActionError] = useState<string | null>(null);
+  const [downloadSucceeded, setDownloadSucceeded] = useState(false);
+  const [isViewingFile, setIsViewingFile] = useState(false);
+  const [isDownloadingFile, setIsDownloadingFile] = useState(false);
+
+  const handleViewOriginal = async () => {
+    if (!storagePath || isViewingFile) return;
+    const previewWindow = window.open('about:blank', '_blank');
+    setIsViewingFile(true);
+    setFileActionError(null);
+    try {
+      const signedUrl = await createPrivateMedicalFileUrl('lab-reports', storagePath);
+      if (previewWindow) {
+        previewWindow.opener = null;
+        previewWindow.location.href = signedUrl;
+      } else {
+        window.open(signedUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      previewWindow?.close();
+      console.error('Failed to open original lab report:', error);
+      setFileActionError(t('fileActions.viewError'));
+    } finally {
+      setIsViewingFile(false);
+    }
+  };
+
+  const handleDownloadOriginal = async () => {
+    if (!storagePath || isDownloadingFile) return;
+    setIsDownloadingFile(true);
+    setFileActionError(null);
+    setDownloadSucceeded(false);
+    try {
+      await downloadPrivateMedicalFile('lab-reports', storagePath, reportTitle);
+      setDownloadSucceeded(true);
+    } catch (error) {
+      console.error('Failed to download original lab report:', error);
+      setFileActionError(t('fileActions.downloadError'));
+    } finally {
+      setIsDownloadingFile(false);
+    }
+  };
 
   const toggleParam = (id: string) => {
     setExpandedParams((prev) => ({
@@ -99,7 +142,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
       {/* PAGE HEADER */}
       <div className="space-y-3 pt-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/85 text-primary text-xs font-semibold tracking-wider uppercase">
-          LAB REPORT EXPLANATION
+          {t('documents.labInfo')}
         </div>
         <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight">
           {t('summaryUi.labTitle')}
@@ -136,14 +179,23 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => setShowOriginalModal(true)}
-            className="px-5 py-2.5 rounded-xl border border-gray-200/80 bg-gray-50/50 hover:bg-gray-100/80 text-nuraText font-semibold text-sm transition-all duration-200 cursor-pointer inline-flex items-center gap-2 shadow-2xs"
-          >
-            <span>{t('documents.originalReport')}</span>
-            <ExternalLink className="w-4 h-4 opacity-60" />
-          </button>
+          {storagePath && (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void handleViewOriginal()} disabled={isViewingFile} className="px-5 py-2.5 rounded-xl border border-gray-200/80 bg-gray-50/50 hover:bg-gray-100/80 text-nuraText font-semibold text-sm transition-all disabled:opacity-50 inline-flex items-center gap-2 shadow-2xs">
+                <ExternalLink className="w-4 h-4 opacity-60" />
+                {isViewingFile ? t('fileActions.opening') : t('documents.originalReport')}
+              </button>
+              <button type="button" onClick={() => void handleDownloadOriginal()} disabled={isDownloadingFile} className="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                {isDownloadingFile ? t('fileActions.downloading') : t('fileActions.downloadOriginal')}
+              </button>
+            </div>
+          )}
         </div>
+
+        {!storagePath && <p className="text-sm text-nuraTextSecondary">{t('fileActions.olderUnavailable')}</p>}
+        {fileActionError && <p className="text-sm font-medium text-red-700" role="alert">{fileActionError}</p>}
+        {downloadSucceeded && <p className="text-sm font-medium text-emerald-700" role="status">{t('fileActions.downloadSuccess')}</p>}
 
         {/* Four Detail Blocks */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -481,73 +533,6 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
         </div>
       </motion.div>
 
-      {/* ORIGINAL REPORT MODAL */}
-      <AnimatePresence>
-        {showOriginalModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowOriginalModal(false)}
-              className="absolute inset-0 bg-slate-900/30 backdrop-blur-xs"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="relative bg-white rounded-[2rem] shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden z-10 p-6 sm:p-8 space-y-6"
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-bold text-lg text-nuraText">
-                      {reportTitle}
-                    </h3>
-                    <p className="text-xs text-nuraTextSecondary">
-                      {analysisData?.laboratory || t('summaryUi.laboratoryUnknown')} • {t('documents.uploaded')} {uploadDate} • <span className="uppercase">{fileType}</span>
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowOriginalModal(false)}
-                  className="w-9 h-9 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-nuraTextSecondary transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Document Preview / Raw Text */}
-              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200/80 space-y-4 max-h-[350px] overflow-y-auto">
-                <div className="space-y-1">
-                  <h4 className="font-heading font-bold text-sm text-nuraText">
-                    {t('summaryUi.extractedText')}
-                  </h4>
-                  <p className="text-xs text-nuraTextSecondary">
-                    {t('summaryUi.extractedHelp')}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200 text-xs text-nuraText font-mono whitespace-pre-wrap leading-relaxed">
-                  {rawText || t('summaryUi.noExtracted')}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  onClick={() => setShowOriginalModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-nuraText hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };

@@ -6,6 +6,7 @@ import { LabReportSummaryPage } from './LabReportSummaryPage';
 import { LabReportAnalysis } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { normalizeLanguage } from '../../i18n';
+import { removePrivateMedicalFile, uploadPrivateMedicalFile } from '../../lib/privateMedicalFiles';
 
 interface LabReportItem {
   id: string;
@@ -13,6 +14,7 @@ interface LabReportItem {
   fileType: 'PDF' | 'JPG' | 'PNG';
   title: string;
   analysis?: LabReportAnalysis;
+  storagePath: string | null;
 }
 
 interface LabReportExplanationPageProps {
@@ -68,6 +70,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
               rawText: row.raw_text ?? null,
               parameters: row.parameters || [],
             },
+            storagePath: row.storage_path ?? null,
           }));
 
           setReports(loadedReports);
@@ -117,52 +120,64 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
         return;
       }
 
-      let finalReportItem: LabReportItem = {
-        ...newReportItem,
-        analysis,
-      };
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw userError ?? new Error('Authenticated user is required.');
 
-      // Attempt to persist structured analysis to public.lab_reports table
+      let storagePath: string | null = null;
+      let insertedData: Record<string, unknown> | null = null;
       try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user) {
-          const { data: insertedData, error: insertError } = await supabase
-            .from('lab_reports')
-            .insert({
-              user_id: userData.user.id,
-              file_name: newReportItem.title,
-              file_type: newReportItem.fileType,
-              report_type: analysis.reportType,
-              laboratory: analysis.laboratory,
-              report_date: analysis.reportDate,
-              raw_text: analysis.rawText,
-              parameters: analysis.parameters,
-              uploaded_at: new Date().toISOString(),
-            })
-            .select()
-            .single();
+        storagePath = await uploadPrivateMedicalFile('lab-reports', userData.user.id, file);
+        const insertResult = await supabase
+          .from('lab_reports')
+          .insert({
+            user_id: userData.user.id,
+            file_name: newReportItem.title,
+            file_type: newReportItem.fileType,
+            report_type: analysis.reportType,
+            laboratory: analysis.laboratory,
+            report_date: analysis.reportDate,
+            raw_text: analysis.rawText,
+            parameters: analysis.parameters,
+            uploaded_at: new Date().toISOString(),
+            storage_path: storagePath,
+          })
+          .select()
+          .single();
 
-          if (insertError) {
-            console.error('Supabase lab_reports insert error:', insertError);
-            setErrorMessage(t('documentErrors.saveLab'));
-          } else if (insertedData) {
-            finalReportItem = {
-              id: insertedData.id,
-              title: insertedData.file_name,
-              fileType: insertedData.file_type as 'PDF' | 'JPG' | 'PNG',
-              date: new Date(insertedData.uploaded_at).toLocaleDateString('en-US', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              }),
-              analysis,
-            };
-          }
+        insertedData = insertResult.data;
+        if (insertResult.error || !insertedData) {
+          const { data: existing } = await supabase
+            .from('lab_reports')
+            .select('*')
+            .eq('user_id', userData.user.id)
+            .eq('storage_path', storagePath)
+            .maybeSingle();
+          if (existing) insertedData = existing;
+          else throw insertResult.error ?? new Error('Lab report row was not returned.');
         }
-      } catch (saveErr) {
-        console.error('Error persisting lab report to Supabase:', saveErr);
-        setErrorMessage(t('documentErrors.saveLab'));
+      } catch (saveError) {
+        if (storagePath) {
+          try { await removePrivateMedicalFile('lab-reports', storagePath); }
+          catch (cleanupError) { console.error('Failed to clean up lab report storage object:', cleanupError); }
+        }
+        console.error('Error persisting lab report and original file:', saveError);
+        throw new Error(t('documentErrors.saveLab'));
       }
+
+      if (!insertedData) throw new Error(t('documentErrors.saveLab'));
+
+      const finalReportItem: LabReportItem = {
+        id: String(insertedData.id),
+        title: String(insertedData.file_name),
+        fileType: insertedData.file_type as 'PDF' | 'JPG' | 'PNG',
+        date: new Date(String(insertedData.uploaded_at)).toLocaleDateString('en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+        analysis,
+        storagePath: typeof insertedData.storage_path === 'string' ? insertedData.storage_path : null,
+      };
 
       setReports((currentReports) => [
         finalReportItem,
@@ -176,7 +191,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
 
     } catch (error) {
       console.error('LAB REPORT ANALYSIS ERROR:', error);
-      setErrorMessage(t('documentErrors.analyzeLab'));
+      setErrorMessage(error instanceof Error && error.message === t('documentErrors.saveLab') ? error.message : t('documentErrors.analyzeLab'));
     } finally {
       isAnalyzingRef.current = false;
       setIsAnalyzing(false);
@@ -188,6 +203,8 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
     setErrorMessage(null);
 
     try {
+      const report = reports.find((item) => item.id === reportId);
+      if (report?.storagePath) await removePrivateMedicalFile('lab-reports', report.storagePath);
       const { error } = await supabase.from('lab_reports').delete().eq('id', reportId);
 
       if (error) {
@@ -246,6 +263,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
       date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
       fileType: detectedType,
       title: file.name,
+      storagePath: null,
     };
 
     setErrorMessage(null);
@@ -270,6 +288,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
         uploadDate={activeReport.date}
         fileType={activeReport.fileType}
         analysisData={activeReport.analysis}
+        storagePath={activeReport.storagePath}
       />
     );
   }
