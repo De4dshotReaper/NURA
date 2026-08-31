@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const languageNames = {
+  en: 'English',
+  hi: 'Hindi',
+  mr: 'Marathi',
+} as const
+
+const resolveLanguage = (value: unknown) => {
+  const code = value === 'hi' || value === 'mr' ? value : 'en'
+  return { code, name: languageNames[code] }
+}
+
 const unsupportedReport = {
   reportFormat: 'unsupported',
   reportType: null,
@@ -53,6 +64,7 @@ serve(async (req) => {
 
     const formData = await req.formData()
     const file = formData.get('file')
+    const language = resolveLanguage(formData.get('language'))
     if (!file || !(file instanceof File)) {
       return new Response(
         JSON.stringify({ error: 'No lab report file provided under form field "file".' }),
@@ -93,6 +105,8 @@ If the document is narrative (MRI, CT, X-ray, ultrasound, histopathology, or sim
 Never invent or infer test names, values, units, reference ranges, laboratory names, dates, or text. Use null when an item is absent or unreadable. Extract every clearly identifiable measurable parameter, not only abnormal ones. Use the report's printed reference range to determine status; never substitute generic ranges. If a reliable comparison is not possible, use "Unknown".
 
 Explanations are educational and conservative. simpleExplanation explains what the test generally measures in plain language. meaningOfResult only states how the extracted value compares with the reference range printed on this report. Do not diagnose, claim conditions, infer patient-specific causes, recommend treatment, or advise medication changes.
+
+Write only the generated explanatory values (subtitle, shortExplanation, simpleExplanation, and meaningOfResult) in clear, natural ${language.name}${language.code === 'en' ? '' : ' using Devanagari script'}. Keep source facts exactly as printed: do not translate or rewrite reportType, laboratory, reportDate, parameter names, values, units, printed reference ranges, or rawText. Keep status enum values exactly as specified in the schema. Do not translate JSON property names.
 
 Return ONLY valid JSON with no markdown or extra text in exactly this shape:
 {

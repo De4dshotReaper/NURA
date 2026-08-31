@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'md'
 }) => {
+  const { t } = useTranslation();
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -49,7 +51,7 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="p-2 text-nuraTextSecondary hover:text-nuraText rounded-full hover:bg-nuraBg transition-colors"
-            aria-label="Close modal"
+            aria-label={t('audit.closeModal')}
           >
             <X className="w-5 h-5" />
           </button>

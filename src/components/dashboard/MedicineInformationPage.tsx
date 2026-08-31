@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { PrescriptionSummaryPage } from './PrescriptionSummaryPage';
 import type { ExtractedMedicine } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { normalizeLanguage } from '../../i18n';
 
 interface PrescriptionItem {
   id: string;
@@ -57,7 +58,8 @@ interface MedicineInformationPageProps {
 export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = ({
   onBackToDashboard
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -248,6 +250,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
       try {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('language', language);
 
         const { data, error } = await supabase.functions.invoke('analyze-prescription', {
           body: formData,
@@ -280,7 +283,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
           void (async () => {
             try {
               const { data: explanationData, error: explanationError } = await supabase.functions.invoke('explain-medicines', {
-                body: { medicineNames },
+                body: { medicineNames, language },
               });
 
               if (explanationError) {
@@ -552,7 +555,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
           <button
             onClick={() => setHasUploaded(!hasUploaded)}
             className="text-xs text-nuraTextSecondary/60 hover:text-nuraText transition-colors"
-            title="Toggle state between populated and empty for demo"
+            title={t('audit.demoToggle')}
           >
             {hasUploaded ? 'Show Empty State' : 'Show Populated Summary'}
           </button>

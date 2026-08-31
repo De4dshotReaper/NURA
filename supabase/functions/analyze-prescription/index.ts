@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const languageNames = {
+  en: 'English',
+  hi: 'Hindi',
+  mr: 'Marathi',
+} as const
+
+const resolveLanguage = (value: unknown) => {
+  const code = value === 'hi' || value === 'mr' ? value : 'en'
+  return { code, name: languageNames[code] }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -29,6 +40,7 @@ serve(async (req) => {
 
     const formData = await req.formData()
     const file = formData.get('file') || formData.get('image')
+    const language = resolveLanguage(formData.get('language'))
 
     if (!file || !(file instanceof File)) {
       return new Response(
@@ -68,6 +80,7 @@ serve(async (req) => {
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${geminiApiKey}`
 
     const promptText = `You are a medical prescription text extractor. Analyze the attached prescription image and extract ONLY the information clearly visible in the prescription. 
+The requested interface language is ${language.name}. This extraction must remain faithful to the source document: do not translate or rewrite medicine names, dosage, frequency, instructions, diagnosis text, doctor name, date, or raw text. This response has no generated explanatory prose.
 Do not invent missing medicine names, dosages, frequencies, or instructions. 
 If text is unclear, return null or mark it as unclear rather than guessing.
 Do not generate medicine explanations, side effects, or medical advice.

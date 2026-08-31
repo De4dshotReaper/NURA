@@ -14,6 +14,24 @@ interface ConsultationQuestionsResponse {
   questions?: unknown
 }
 
+const languageNames = {
+  en: 'English',
+  hi: 'Hindi',
+  mr: 'Marathi',
+} as const
+
+const resolveLanguage = (value: unknown) => {
+  const code = value === 'hi' || value === 'mr' ? value : 'en'
+  return { code, name: languageNames[code] }
+}
+
+const languageInstruction = (language: ReturnType<typeof resolveLanguage>) =>
+  language.code === 'hi'
+    ? 'Generate the questions in clear, natural Hindi using Devanagari script.'
+    : language.code === 'mr'
+      ? 'Generate the questions in clear, natural Marathi using Devanagari script.'
+      : 'Generate the questions in clear, natural English.'
+
 const optionalString = (value: unknown) =>
   typeof value === 'string' && value.trim() ? value.trim() : null
 
@@ -34,6 +52,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
+    const language = resolveLanguage(body?.language)
     const mode = body?.mode === 'next-appointment'
       ? 'next-appointment'
       : body?.mode === 'first-appointment'
@@ -75,6 +94,8 @@ serve(async (req) => {
       promptText = `You help a patient prepare concise questions to ask a clinician during a first consultation.
 
 Create approximately 5 directly usable questions based only on the supplied symptom context. Questions may help the patient discuss symptom history, useful information to mention, changes to monitor, understanding the clinician's assessment, possible next steps in a neutral way, and when or how to follow up.
+
+${languageInstruction(language)} Preserve medicine names, doctor and clinic names, medical abbreviations, numerical values, units, dosages, frequencies, and report terminology when translating them would reduce accuracy. Do not unnecessarily transliterate medicine brand or generic names.
 
 Do not diagnose, claim a likely disease, recommend starting, stopping, or changing medicines, direct the patient to obtain a particular test or treatment, replace professional medical advice, or invent facts not supplied below. Phrase possible next steps as neutral questions for the clinician. Keep every question concise and understandable. Do not include markdown, bullets, or numbering in individual question strings.
 
@@ -160,6 +181,8 @@ ${JSON.stringify({ symptoms, severity, duration })}`
       promptText = `You help a patient prepare concise follow-up questions for their next clinician appointment.
 
 Create approximately 5 directly usable, appointment-ready questions based only on the supplied longitudinal context. Use persisted facts; do not independently interpret them. When meaningful previous-visit context exists, avoid producing only generic first-visit questions. Prefer questions that connect the patient's current situation to the previous consultation and its explicitly linked records.
+
+${languageInstruction(language)} Preserve medicine names, doctor and clinic names, medical abbreviations, numerical values, units, dosages, frequencies, and report terminology when translating them would reduce accuracy. Do not unnecessarily transliterate medicine brand or generic names.
 
 Prioritize the most relevant available context: changes in symptoms since the previous consultation, whether the previous plan still fits, medicine experience when linked medicines are present, report findings when linked lab data is present, unresolved follow-up concerns, what the clinician wants the patient to monitor, and follow-up timing or next steps. Do not mechanically force every category into the output.
 

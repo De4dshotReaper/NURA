@@ -55,7 +55,7 @@ export const DurationSelection: React.FC<DurationSelectionProps> = ({ onContinue
               transform: loaded ? 'translateY(0)' : 'translateY(10px)',
             }}
           >
-            ONE STEP AT A TIME.
+            {t('audit.oneStep')}
           </p>
         </div>
 

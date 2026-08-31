@@ -50,6 +50,7 @@ const SymptomChecklistPreview: React.FC = () => {
 };
 
 const DoctorConsultationPreview: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/90 space-y-2 text-left pointer-events-none select-none">
       <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
@@ -63,11 +64,11 @@ const DoctorConsultationPreview: React.FC = () => {
           </div>
         </div>
         <span className="text-[8px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100/80">
-          Visited
+          {t('auditPreview.visited')}
         </span>
       </div>
       <div className="bg-gray-50/80 p-2 rounded-lg border border-gray-100 text-[9px] text-nuraTextSecondary">
-        <span className="font-semibold text-nuraText">Notes: </span>
+        <span className="font-semibold text-nuraText">{t('auditPreview.notes')}: </span>
         Prescribed rest, fluids & 5-day medication.
       </div>
     </div>
@@ -105,6 +106,7 @@ const NuraDashboardPreview: React.FC = () => {
 };
 
 const PrescriptionLabPreview: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/90 space-y-1.5 text-left pointer-events-none select-none">
       <div className="flex items-center justify-between p-1.5 rounded-lg bg-emerald-50/70 border border-emerald-100">
@@ -112,14 +114,14 @@ const PrescriptionLabPreview: React.FC = () => {
           <Pill className="w-3 h-3 text-emerald-600" />
           <span className="text-[9px] font-bold text-nuraText">Amoxicillin 500mg</span>
         </div>
-        <span className="text-[8px] font-semibold text-emerald-700">Rx Guide</span>
+        <span className="text-[8px] font-semibold text-emerald-700">{t('auditPreview.rxGuide')}</span>
       </div>
       <div className="flex items-center justify-between p-1.5 rounded-lg bg-purple-50/70 border border-purple-100">
         <div className="flex items-center gap-1.5">
           <FileText className="w-3 h-3 text-purple-600" />
           <span className="text-[9px] font-bold text-nuraText">Blood Panel Report</span>
         </div>
-        <span className="text-[8px] font-semibold text-purple-700">Explained</span>
+        <span className="text-[8px] font-semibold text-purple-700">{t('auditPreview.explained')}</span>
       </div>
     </div>
   );
@@ -173,11 +175,11 @@ const CompletedTimelinePreview: React.FC = () => {
 const FinalDashboardRevealPreview: React.FC = () => {
   const { t } = useTranslation();
   const items = [
-    { title: "Consultation Overview", desc: "Doctor's notes & symptoms", icon: User, color: "text-blue-600", bg: "bg-blue-50" },
-    { title: "Prescription Guide", desc: "Dosage schedule & purpose", icon: Pill, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { title: "Lab Report Explanation", desc: "Simplified findings & ranges", icon: FileText, color: "text-amber-600", bg: "bg-amber-50" },
-    { title: "Health Timeline", desc: "Complete healthcare journey", icon: Activity, color: "text-teal-600", bg: "bg-teal-50" },
-    { title: "Follow-up Companion", desc: "Next visit & recovery flow", icon: Calendar, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { title: t('audit.consultationOverview'), desc: t('audit.doctorNotesSymptoms'), icon: User, color: "text-blue-600", bg: "bg-blue-50" },
+    { title: t('audit.prescriptionGuide'), desc: t('audit.dosagePurpose'), icon: Pill, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { title: t('audit.labExplanation'), desc: t('audit.findingsRanges'), icon: FileText, color: "text-amber-600", bg: "bg-amber-50" },
+    { title: t('nav.timeline'), desc: t('audit.completeJourney'), icon: Activity, color: "text-teal-600", bg: "bg-teal-50" },
+    { title: t('audit.followUpCompanion'), desc: t('audit.nextVisitRecovery'), icon: Calendar, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
 
   return (

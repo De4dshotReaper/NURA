@@ -19,18 +19,18 @@ export const SeveritySelection: React.FC<SeveritySelectionProps> = ({ onContinue
   }, []);
 
   const getHelpText = (val: number | null) => {
-    if (val === null) return "Select a number above to see symptom guidance.";
+    if (val === null) return t('audit.severitySelect');
     if (val >= 1 && val <= 3) {
-      return "Mild — noticeable but manageable.";
+      return t('audit.severityMild');
     }
     if (val >= 4 && val <= 6) {
-      return "Moderate — affecting daily activities.";
+      return t('audit.severityModerate');
     }
     if (val >= 7 && val <= 8) {
-      return "Severe — difficult to ignore.";
+      return t('audit.severitySevere');
     }
     if (val >= 9 && val <= 10) {
-      return "Very severe — you should seek medical attention if symptoms are worsening.";
+      return t('audit.severityVerySevere');
     }
     return "";
   };
@@ -62,7 +62,7 @@ export const SeveritySelection: React.FC<SeveritySelectionProps> = ({ onContinue
               transform: loaded ? 'translateY(0)' : 'translateY(10px)',
             }}
           >
-            ONE STEP AT A TIME.
+            {t('audit.oneStep')}
           </p>
         </div>
 
@@ -78,7 +78,7 @@ export const SeveritySelection: React.FC<SeveritySelectionProps> = ({ onContinue
             {t('workflow.severityTitle')}
           </h1>
           <p className="font-sans text-base sm:text-lg text-nuraTextSecondary font-medium">
-            Choose the number that feels closest.
+            {t('audit.severityClosest')}
           </p>
         </div>
 

@@ -322,8 +322,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           id: `symptom-${symptomEntryId}`,
           timestamp: initialSymptom.created_at,
           timestampMs: new Date(initialSymptom.created_at).getTime(),
-          title: 'Symptoms Recorded',
-          description: initialSymptom.symptoms || 'Symptoms recorded',
+          title: t('events.symptoms'),
+          description: initialSymptom.symptoms || t('audit.symptomsRecordedFallback'),
           dateKey: getLocalDateKey(initialSymptom.created_at),
           dateLabel: formatEventDate(initialSymptom.created_at),
           timeStr: formatEventTime(initialSymptom.created_at),
@@ -346,8 +346,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 id: `followup-${row.id}`,
                 timestamp: row.created_at,
                 timestampMs: new Date(row.created_at).getTime(),
-                title: 'Follow-up Recorded',
-                description: currentSymptoms || progress || 'Follow-up information recorded.',
+                title: t('events.followUp'),
+                description: currentSymptoms || progress || t('audit.followUpRecordedFallback'),
                 dateKey: getLocalDateKey(row.created_at),
                 dateLabel: formatEventDate(row.created_at),
                 timeStr: formatEventTime(row.created_at),
@@ -378,8 +378,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               id: `questions-${symptomEntryId}`,
               timestamp,
               timestampMs: new Date(timestamp).getTime(),
-              title: 'Questions Prepared',
-              description: `${questions.length} ${questions.length === 1 ? 'question' : 'questions'} prepared for your next appointment`,
+              title: t('events.questions'),
+              description: t(questions.length === 1 ? 'audit.questionPrepared' : 'audit.questionsPrepared', { count: questions.length }),
               dateKey: getLocalDateKey(timestamp),
               dateLabel: formatEventDate(timestamp),
               timeStr: formatEventTime(timestamp),
@@ -407,12 +407,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 : row.created_at;
               const description = [row.doctor_name?.trim(), row.clinic_name?.trim()]
                 .filter(Boolean)
-                .join(' • ') || row.notes?.trim() || 'Consultation details recorded';
+                .join(' • ') || row.notes?.trim() || t('audit.consultationDetailsRecorded');
               return {
                 id: `consultation-${row.id}`,
                 timestamp: consultationTimestamp,
                 timestampMs: new Date(consultationTimestamp).getTime(),
-                title: 'Appointment Recorded',
+                title: t('events.appointment'),
                 description,
                 dateKey: getLocalDateKey(consultationTimestamp),
                 dateLabel: formatEventDate(consultationTimestamp),
@@ -612,7 +612,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-2 rounded-xl text-nuraTextSecondary hover:text-nuraText hover:bg-gray-50 transition-colors"
-          aria-label="Toggle navigation menu"
+          aria-label={t('audit.toggleNavigation')}
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -943,7 +943,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
               ) : currentEpisodeError ? (
                 <div className="py-8 text-center" role="alert">
-                  <p className="text-sm font-medium text-red-700">Follow-up information is unavailable right now.</p>
+                  <p className="text-sm font-medium text-red-700">{t('audit.followUpUnavailable')}</p>
                 </div>
               ) : latestFollowUpError ? (
                 <div className="py-8 text-center" role="alert">
@@ -965,7 +965,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                       {latestFollowUp.current_symptoms?.trim() && (
                         <div className="bg-gray-50/60 p-4 rounded-2xl border border-gray-100/80 space-y-1.5">
                           <p className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/60">
-                            Current Symptoms
+                            {t('audit.currentSymptoms')}
                           </p>
                           <p className="text-sm text-nuraText whitespace-pre-line">
                             {latestFollowUp.current_symptoms}
@@ -975,7 +975,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                       {latestFollowUp.medicine_compliance?.trim() && (
                         <div className="bg-gray-50/60 p-4 rounded-2xl border border-gray-100/80 space-y-1.5">
                           <p className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/60">
-                            Medicine Compliance
+                            {t('audit.medicineCompliance')}
                           </p>
                           <p className="text-sm font-semibold text-nuraText">
                             {latestFollowUp.medicine_compliance}
@@ -1037,7 +1037,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
               ) : currentEpisodeError ? (
                 <div className="py-12 text-center" role="alert">
-                  <p className="text-sm font-medium text-red-700">Current episode activity is unavailable right now.</p>
+                  <p className="text-sm font-medium text-red-700">{t('audit.activityUnavailable')}</p>
                 </div>
               ) : timelineEvents.length > 0 ? (
                 <div className="space-y-6">
@@ -1110,10 +1110,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="pt-8 space-y-6">
               <div className="space-y-1">
                 <h2 className="font-heading font-extrabold text-2xl text-nuraText tracking-tight">
-                  Resources
+                  {t('nav.resources')}
                 </h2>
                 <p className="font-sans text-sm text-nuraTextSecondary">
-                  Everything you need before and after your appointment.
+                  {t('audit.resourcesHelp')}
                 </p>
               </div>
 
@@ -1135,13 +1135,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         {t('nav.questions')}
                       </h3>
                       <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-                        Generate thoughtful questions to ask your doctor based on your symptoms.
+                        {t('audit.questionsResource')}
                       </p>
                     </div>
                   </div>
                   <div className="pt-6 mt-6 border-t border-gray-100/80 flex items-center justify-between">
                     <span className="text-xs sm:text-sm font-semibold text-primary transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">
-                      Open →
+                      {t('audit.open')} →
                     </span>
                   </div>
                 </motion.div>
@@ -1219,7 +1219,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         {t('nav.timeline')}
                       </h3>
                       <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-                        Browse every consultation, symptom, prescription and follow-up in one chronological history.
+                        {t('audit.timelineResource')}
                       </p>
                     </div>
                   </div>

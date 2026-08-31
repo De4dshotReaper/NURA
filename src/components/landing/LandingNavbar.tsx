@@ -97,7 +97,7 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="md:hidden p-2 text-nuraText hover:text-primary transition-colors focus:outline-none cursor-pointer"
-          aria-label="Toggle navigation menu"
+          aria-label={t('audit.toggleNavigation')}
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>

@@ -86,7 +86,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         if (error) {
           setAuthError(error.message);
         } else {
-          setSuccessMessage('Account created successfully! Redirecting to dashboard...');
+          setSuccessMessage(t('audit.accountCreated'));
           setTimeout(() => {
             if (onLoginSuccess) onLoginSuccess();
           }, 1000);
@@ -100,7 +100,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         if (error) {
           setAuthError(error.message);
         } else {
-          setSuccessMessage('Signed in successfully! Redirecting...');
+          setSuccessMessage(t('audit.signedIn'));
           setTimeout(() => {
             if (onLoginSuccess) onLoginSuccess();
           }, 600);
@@ -180,7 +180,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-start gap-3 animate-fade-in text-left">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-emerald-900">Success</p>
+                  <p className="text-sm font-semibold text-emerald-900">{t('audit.success')}</p>
                   <p className="text-xs text-emerald-700 leading-relaxed">{successMessage}</p>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       setFullName(e.target.value);
                       if (nameError) setNameError('');
                     }}
-                    placeholder="Enter your full name"
+                    placeholder={t('audit.fullNamePlaceholder')}
                     className={`w-full px-4 py-3 bg-white border rounded-xl font-sans text-sm text-nuraText placeholder:text-nuraTextSecondary/40 focus:outline-none focus:ring-4 transition-all disabled:opacity-50 ${
                       nameError
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-500/15'
@@ -233,7 +233,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       setEmail(e.target.value);
                       if (emailError) setEmailError('');
                     }}
-                    placeholder="name@example.com"
+                    placeholder={t('audit.emailPlaceholder')}
                     className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl font-sans text-sm text-nuraText placeholder:text-nuraTextSecondary/40 focus:outline-none focus:ring-4 transition-all disabled:opacity-50 ${
                       emailError
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-500/15'
@@ -267,7 +267,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       setPassword(e.target.value);
                       if (passwordError) setPasswordError('');
                     }}
-                    placeholder="At least 6 characters"
+                    placeholder={t('audit.passwordPlaceholder')}
                     className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl font-sans text-sm text-nuraText placeholder:text-nuraTextSecondary/40 focus:outline-none focus:ring-4 transition-all disabled:opacity-50 ${
                       passwordError
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-500/15'

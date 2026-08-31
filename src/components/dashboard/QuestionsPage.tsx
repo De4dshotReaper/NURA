@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Send, CheckCircle2, MessageSquare, Lightbulb, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { normalizeLanguage } from '../../i18n';
 
 interface ConsultationQuestion {
   id: string;
@@ -65,7 +66,8 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
   symptomEntryId,
   userId,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
   const [customQuestion, setCustomQuestion] = useState('');
   const [askedQuestions, setAskedQuestions] = useState<ConsultationQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -199,6 +201,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
 
         let functionBody: Record<string, unknown> = {
           mode: 'first-appointment',
+          language,
           symptoms: symptomEntry.symptoms,
           severity: symptomEntry.severity,
           duration: symptomEntry.duration,
@@ -336,6 +339,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
 
           functionBody = {
             mode: 'next-appointment',
+            language,
             symptoms: symptomEntry.symptoms,
             severity: symptomEntry.severity,
             duration: symptomEntry.duration,
@@ -403,7 +407,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [appointmentMode, latestConsultation, symptomEntryId, suggestionAttempt]);
+  }, [appointmentMode, language, latestConsultation, symptomEntryId, suggestionAttempt]);
 
   const handleAddQuestion = async () => {
     if (isSaving) return;

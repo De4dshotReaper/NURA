@@ -12,6 +12,17 @@ interface MedicineExplanation {
   thingsToRemember: string[]
 }
 
+const languageNames = {
+  en: 'English',
+  hi: 'Hindi',
+  mr: 'Marathi',
+} as const
+
+const resolveLanguage = (value: unknown) => {
+  const code = value === 'hi' || value === 'mr' ? value : 'en'
+  return { code, name: languageNames[code] }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -25,7 +36,8 @@ serve(async (req) => {
   }
 
   try {
-    const { medicineNames } = await req.json()
+    const { medicineNames, language: requestedLanguage } = await req.json()
+    const language = resolveLanguage(requestedLanguage)
     const names = Array.isArray(medicineNames)
       ? medicineNames.filter((name): name is string => typeof name === 'string' && name.trim().length > 0).map((name) => name.trim())
       : []
@@ -46,6 +58,8 @@ serve(async (req) => {
     }
 
     const promptText = `You provide concise, general educational medicine information. For each medicine name below, return information only when you can identify that medicine confidently. Preserve each supplied medicine name exactly in the response.
+
+Write the generated educational values (whatItsFor, commonSideEffects, and thingsToRemember) in clear, natural ${language.name}${language.code === 'en' ? '' : ' using Devanagari script'}. Preserve medicine names exactly, and preserve medical abbreviations or established medical terminology when translating them would reduce clarity. Do not translate JSON property names.
 
 Do not diagnose conditions, recommend whether to take a medicine, prescribe or change doses, determine treatment duration, infer why a specific patient received it, or invent prescription instructions. “whatItsFor” must describe common/general uses only, for example: “Commonly used to reduce fever and relieve mild to moderate pain.”
 

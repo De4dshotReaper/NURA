@@ -149,8 +149,8 @@ const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSel
                   </time>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3 text-sm text-nuraTextSecondary">
-                  <span className="rounded-lg bg-gray-50 px-3 py-2">Severity: <strong className="text-nuraText">{entry.severity} / 10</strong></span>
-                  <span className="rounded-lg bg-gray-50 px-3 py-2">Duration: <strong className="text-nuraText">{entry.duration}</strong></span>
+                  <span className="rounded-lg bg-gray-50 px-3 py-2">{t('dashboard.severity')}: <strong className="text-nuraText">{entry.severity} / 10</strong></span>
+                  <span className="rounded-lg bg-gray-50 px-3 py-2">{t('dashboard.duration')}: <strong className="text-nuraText">{entry.duration}</strong></span>
                 </div>
               </button>
             ))}
@@ -597,7 +597,7 @@ export const App: React.FC = () => {
         <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
           <div className="w-full max-w-xl rounded-[2rem] border border-red-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-5">
             <div className="space-y-2">
-              <h1 className="font-heading text-2xl font-extrabold text-nuraText">Follow-up unavailable</h1>
+              <h1 className="font-heading text-2xl font-extrabold text-nuraText">{t('audit.followUpUnavailableTitle')}</h1>
               <p className="text-sm text-red-700" role="alert">{followUpEpisodeError}</p>
             </div>
             <div className="flex flex-col-reverse sm:flex-row justify-center gap-3">
@@ -784,12 +784,12 @@ export const App: React.FC = () => {
             <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
               <span className="font-heading font-bold text-xl">N</span>
             </div>
-            <h2 className="text-2xl font-bold font-heading text-nuraText">Next Flow Prepared</h2>
+            <h2 className="text-2xl font-bold font-heading text-nuraText">{t('audit.nextFlowPrepared')}</h2>
             <p className="text-nuraTextSecondary">
-              Selected path: <span className="font-semibold text-primary">Follow-up Visit (Review Consultation)</span>
+              {t('audit.selectedPath')}: <span className="font-semibold text-primary">{t('audit.followUpReview')}</span>
             </p>
             <p className="text-xs text-nuraTextSecondary opacity-80">
-              Navigation structure is fully configured. The subsequent onboarding screen will be implemented next.
+              {t('audit.nextFlowHelp')}
             </p>
             <button
               onClick={() => {

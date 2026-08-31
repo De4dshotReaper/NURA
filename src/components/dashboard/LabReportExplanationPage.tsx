@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { LabReportSummaryPage } from './LabReportSummaryPage';
 import { LabReportAnalysis } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { normalizeLanguage } from '../../i18n';
 
 interface LabReportItem {
   id: string;
@@ -21,7 +22,8 @@ interface LabReportExplanationPageProps {
 export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> = ({
   onBackToDashboard
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
   const [reports, setReports] = useState<LabReportItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -90,6 +92,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('language', language);
 
       const { data, error } = await supabase.functions.invoke('analyze-lab-report', {
         body: formData,
