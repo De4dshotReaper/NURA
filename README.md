@@ -1,116 +1,97 @@
 # Nura
 
-### A calm patient companion for organizing the journey around a medical consultation.
+A patient companion app for keeping track of everything around a medical consultation — symptoms, prescriptions, lab reports, appointments, and follow-ups — instead of leaving it scattered across notes and memory.
 
-Nura is a full-stack healthcare companion web application designed to help users organize health information before, during, and after medical consultations.
+Nura groups related records into **Health Episodes**: once a health concern starts, everything connected to it (symptoms, consultations, follow-ups) lives together in one place, while a separate timeline keeps the full history across every episode.
 
-Instead of treating symptoms, prescriptions, lab reports, appointments, and follow-ups as disconnected records, Nura organizes them into **Health Episodes** — structured periods of care that preserve the complete story of a health concern.
-
-> **Academic prototype:** Nura is an educational project and is not intended to diagnose medical conditions or replace professional medical advice.
+> **Academic prototype.** Nura is an educational project and isn't meant to diagnose conditions or replace advice from a doctor.
 
 ---
 
-## ✨ Features
+## Features
 
-### 🩺 Health Episodes
-Create an episode when a new health concern begins and track its complete journey from initial symptoms to consultations and follow-ups.
+**Health Episodes**
+Start an episode when a new health concern comes up and track it from the first symptoms through consultations and any follow-ups. Each episode has its own story, while the health timeline ties everything together across episodes.
 
-Each episode maintains its own **Episode Story**, while the global Health Timeline preserves the user's longitudinal history.
+**Pre-consultation prep**
+Log your symptoms, how severe they are, and how long they've lasted. Nura suggests questions you might want to bring up with the doctor.
 
-### 📝 Pre-Consultation Preparation
-Record:
-- Symptoms
-- Severity
-- Duration
+**Consultation records**
+After an appointment, record the notes, the doctor and clinic, the date and time, any follow-up plan, and the prescriptions or lab reports tied to that visit.
 
-Nura can generate useful questions that the user may want to discuss during their consultation.
+**Prescription analysis**
+Upload a photo of a prescription and Nura pulls out the medicine name, dosage, frequency, and instructions, plus general educational info on each medicine.
 
-### 📅 Consultation Records
-Record completed appointments including:
-- Consultation notes
-- Doctor and clinic information
-- Appointment date and time
-- Follow-up recommendations
-- Related prescriptions
-- Related laboratory reports
+**Lab report explanation**
+Upload a supported lab report and Nura extracts the parameters, values, units, and reference ranges, then lays them out more clearly without changing what the report actually says.
 
-### 💊 Prescription Analysis
-Upload a prescription image and Nura can extract structured medicine information such as:
-- Medicine name
-- Dosage
-- Frequency
-- Instructions
+**Context-aware consultation questions**
+When you're prepping for a follow-up, Nura can draw on the previous consultation, the latest follow-up, and any prescriptions or lab reports you've linked. Each prep cycle stays separate from the last.
 
-Nura can also provide general educational information about the extracted medicines.
+**Follow-up tracking**
+Record how things are going after a consultation — recovery, current symptoms, whether you're keeping up with the medicine, side effects, new questions.
 
-### 🧪 Lab Report Explanation
-Upload supported structured laboratory reports and Nura extracts measurable parameters, values, units, and report-provided reference ranges.
-
-Results are presented in a more readable format while preserving the information contained in the original report.
-
-### 💬 Context-Aware Consultation Questions
-Questions for later consultations can use context from:
-- Previous consultation
-- Latest follow-up
-- Explicitly linked prescriptions
-- Explicitly linked laboratory reports
-
-Each consultation preparation cycle remains separate.
-
-### 🔄 Follow-up Tracking
-Record changes after a consultation including:
-- Recovery progress
-- Current symptoms
-- Medicine compliance
-- Side effects
-- Additional questions
-
-### 🕒 Health Timeline
-A longitudinal timeline combines persisted health events across episodes.
-
-Individual Health Episodes also provide a scoped **Episode Story** containing only records explicitly associated with that episode.
+**Health timeline**
+A combined view across all episodes, plus a scoped view inside each episode showing only what's connected to that particular issue.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech stack
 
-### Frontend
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- Lucide Icons
-
-### Backend
-- Supabase
-- PostgreSQL
-- Supabase Authentication
-- Row Level Security (RLS)
-- Supabase Edge Functions
-- TypeScript / Deno
-
-### AI
-- Google Gemini API
-
-Gemini is accessed through server-side Supabase Edge Functions rather than directly from the browser.
-
-### Deployment & Development
-- Vercel
-- Git
-- GitHub
-
-
-## 🔐 Data & Security
-
-Nura uses Supabase Authentication and PostgreSQL Row Level Security to isolate user data.
-
-AI requests are processed through server-side Edge Functions so private API credentials are not exposed in the frontend.
-
-Health records are persisted in PostgreSQL and reused throughout the application rather than requiring repeated AI processing.
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, Lucide Icons
+- **Backend:** Supabase, PostgreSQL, Supabase Authentication, Row Level Security, Supabase Edge Functions, TypeScript/Deno
+- **AI:** Google Gemini API, called from Supabase Edge Functions rather than directly from the browser
+- **Deployment:** Vercel for the frontend, Supabase for the backend, with Git/GitHub for version control
 
 ---
 
-## 🚀 Running Locally
+## Architecture
+
+```mermaid
+flowchart TD
+    U["Patient / User"]
+
+    subgraph FE["Frontend — Vercel"]
+        F["React + TypeScript<br/>Tailwind CSS + Vite"]
+    end
+
+    subgraph BE["Backend — Supabase"]
+        AUTH["Authentication"]
+        DB[("PostgreSQL<br/>Profiles · Consultations<br/>Symptoms · Medicines · Tests")]
+        RLS["Row Level Security"]
+        EF["Edge Functions"]
+    end
+
+    AI["Google Gemini API"]
+
+    U --> F
+    F --> AUTH
+    F -->|RLS-scoped queries| DB
+    RLS -. protects .-> DB
+    F --> EF
+    EF -->|API calls| AI
+    EF --> DB
+
+    classDef frontend fill:#10b981,stroke:#059669,color:#fff
+    classDef backend fill:#3ecf8e,stroke:#1a7f5a,color:#fff
+    classDef ai fill:#4285f4,stroke:#1a56c4,color:#fff
+    classDef user fill:#f3f4f6,stroke:#9ca3af,color:#111
+
+    class F frontend
+    class AUTH,DB,RLS,EF backend
+    class AI ai
+    class U user
+```
+
+---
+
+## Data and security
+
+Supabase Authentication and PostgreSQL Row Level Security keep each user's data isolated. AI requests go through server-side Edge Functions, so the Gemini API key never reaches the browser. Health records are stored in PostgreSQL and reused across the app instead of being re-processed by the AI every time.
+
+---
+
+## Running locally
 
 Clone the repository:
 
@@ -125,14 +106,14 @@ Install dependencies:
 npm install
 ```
 
-Configure the required frontend environment variables:
+Add the frontend environment variables:
 
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Start the development server:
+Start the dev server:
 
 ```bash
 npm run dev
@@ -140,24 +121,18 @@ npm run dev
 
 ---
 
-## 🌐 Live Demo
-
-Nura is deployed on Vercel:
+## Live demo
 
 https://nuraforhealth.vercel.app
 
 ---
 
-## 🎓 Project Context
+## Project context
 
-Nura was developed as a **College Engineering Project (CEP)** exploring how modern web technologies and generative AI can be combined to improve the organization and accessibility of information surrounding healthcare consultations.
-
-The project focuses on patient-side information organization rather than diagnosis or treatment recommendation.
+Nura was built as a College Engineering Project (CEP), looking at how web tech and generative AI can help organize the information around a medical consultation. The focus is on helping patients keep track of their own information, not on diagnosis or treatment.
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
-Nura is an academic and educational prototype.
-
-It does not provide medical diagnoses, prescribe treatment, or replace consultation with a qualified healthcare professional. AI-generated information may contain errors and should not be used as the sole basis for medical decisions.
+Nura is an academic prototype. It doesn't diagnose conditions, prescribe treatment, or replace a consultation with a qualified healthcare professional. AI-generated content can be wrong and shouldn't be treated as the sole basis for a medical decision.
