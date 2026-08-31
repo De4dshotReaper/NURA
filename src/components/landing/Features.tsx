@@ -16,13 +16,15 @@ import {
   AlertCircle,
   ArrowRight
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /* -------------------------------------------------------------------------- */
 /*                        ANIMATED DASHBOARD PREVIEWS                         */
 /* -------------------------------------------------------------------------- */
 
 const ConsultationOverviewPreview: React.FC = () => {
-  const symptomTags = ["Mild Fever", "Dry Cough", "Fatigue"];
+  const { t } = useTranslation();
+  const symptomTags = t('previewSamples.symptoms', { returnObjects: true }) as string[];
 
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/80 space-y-2.5 text-left pointer-events-none select-none">
@@ -43,7 +45,7 @@ const ConsultationOverviewPreview: React.FC = () => {
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100/60"
         >
-          Summary
+          {t('previewUi.summary')}
         </motion.span>
       </div>
 
@@ -63,13 +65,13 @@ const ConsultationOverviewPreview: React.FC = () => {
 
       {/* Doctor Notes Preview */}
       <div className="bg-gray-50/80 p-2 rounded-lg border border-gray-100 text-[10px] text-nuraTextSecondary leading-tight">
-        <span className="font-semibold text-nuraText">Notes: </span>
+        <span className="font-semibold text-nuraText">{t('previewUi.notes')}: </span>
         Patient reports 3 days of low fever. Rest & hydration recommended.
       </div>
 
       {/* Next Steps Row */}
       <div className="flex items-center justify-between pt-0.5 text-[10px]">
-        <span className="text-nuraTextSecondary font-medium">Next Steps</span>
+        <span className="text-nuraTextSecondary font-medium">{t('previewUi.nextSteps')}</span>
         <span className="text-blue-600 font-semibold flex items-center gap-0.5">
           Rest & Meds <ArrowUpRight className="w-2.5 h-2.5" />
         </span>
@@ -79,7 +81,8 @@ const ConsultationOverviewPreview: React.FC = () => {
 };
 
 const PrescriptionGuidePreview: React.FC = () => {
-  const scheduleItems = ["Morning", "Afternoon", "Night"];
+  const { t } = useTranslation();
+  const scheduleItems = t('previewSamples.schedule', { returnObjects: true }) as string[];
 
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/80 space-y-2.5 text-left pointer-events-none select-none">
@@ -101,14 +104,14 @@ const PrescriptionGuidePreview: React.FC = () => {
           className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-          Active
+          {t('previewUi.active')}
         </motion.span>
       </div>
 
       {/* Dosage Schedule Row with Animated Highlight Loop */}
       <div className="space-y-1.5 pt-1">
         <div className="flex justify-between items-center text-[10px] bg-gray-50/80 px-2.5 py-1.5 rounded-lg border border-gray-100">
-          <span className="text-nuraTextSecondary">Schedule</span>
+          <span className="text-nuraTextSecondary">{t('previewUi.schedule')}</span>
           <div className="flex items-center gap-1">
             {scheduleItems.map((item, i) => (
               <motion.span
@@ -126,7 +129,7 @@ const PrescriptionGuidePreview: React.FC = () => {
           </div>
         </div>
         <div className="flex justify-between items-center text-[10px] bg-gray-50/80 px-2.5 py-1.5 rounded-lg border border-gray-100">
-          <span className="text-nuraTextSecondary">Purpose</span>
+          <span className="text-nuraTextSecondary">{t('previewUi.purpose')}</span>
           <span className="font-medium text-nuraText">Bacterial Infection</span>
         </div>
       </div>
@@ -135,12 +138,13 @@ const PrescriptionGuidePreview: React.FC = () => {
 };
 
 const LabReportExplanationPreview: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/80 space-y-2 text-left pointer-events-none select-none">
       {/* Header */}
       <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
         <span className="text-[11px] font-bold text-nuraText font-heading">Blood Panel Report</span>
-        <span className="text-[9px] text-nuraTextSecondary">2 Parameters</span>
+        <span className="text-[9px] text-nuraTextSecondary">{t('previewUi.parameters', { count: 2 })}</span>
       </div>
 
       {/* Parameter Rows with Sequential Badges */}
@@ -157,7 +161,7 @@ const LabReportExplanationPreview: React.FC = () => {
             className="text-[8px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1"
           >
             <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
-            Normal
+            {t('previewUi.normal')}
           </motion.span>
         </div>
 
@@ -180,7 +184,7 @@ const LabReportExplanationPreview: React.FC = () => {
             className="text-[8px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 flex items-center gap-1"
           >
             <AlertCircle className="w-2.5 h-2.5 text-amber-600" />
-            Below Range
+            {t('previewUi.below')}
           </motion.span>
         </motion.div>
       </div>
@@ -189,23 +193,20 @@ const LabReportExplanationPreview: React.FC = () => {
 };
 
 const QuestionsBeforeAppointmentPreview: React.FC = () => {
-  const questions = [
-    "Should I continue current supplements?",
-    "What side effects to monitor for?",
-    "When to schedule blood test follow-up?"
-  ];
+  const { t } = useTranslation();
+  const questions = t('previewSamples.questions', { returnObjects: true }) as string[];
 
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/80 space-y-2 text-left pointer-events-none select-none">
       {/* Header with Progress Badge Update */}
       <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
-        <span className="text-[11px] font-bold text-nuraText font-heading">Appointment Checklist</span>
+        <span className="text-[11px] font-bold text-nuraText font-heading">{t('previewUi.checklist')}</span>
         <motion.span 
           animate={{ opacity: [0.7, 1, 1, 0.7] }}
           transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
           className="text-[9px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100"
         >
-          3/3 Ready
+          {t('previewUi.ready', { value: '3/3' })}
         </motion.span>
       </div>
 
@@ -228,6 +229,7 @@ const QuestionsBeforeAppointmentPreview: React.FC = () => {
 };
 
 const FollowUpCompanionPreview: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/80 space-y-2.5 text-left pointer-events-none select-none">
       {/* Card Top */}
@@ -237,7 +239,7 @@ const FollowUpCompanionPreview: React.FC = () => {
             <Calendar className="w-3.5 h-3.5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-nuraText font-heading leading-none">Follow-up Visit</p>
+            <p className="text-[11px] font-bold text-nuraText font-heading leading-none">{t('previewUi.followUp')}</p>
             <p className="text-[9px] text-nuraTextSecondary">Dr. Sarah Jenkins</p>
           </div>
         </div>
@@ -247,7 +249,7 @@ const FollowUpCompanionPreview: React.FC = () => {
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100/60"
         >
-          Confirmed
+          {t('previewUi.confirmed')}
         </motion.span>
       </div>
 
@@ -261,18 +263,19 @@ const FollowUpCompanionPreview: React.FC = () => {
           <Clock className="w-3 h-3 text-nuraTextSecondary" />
           <span>Thu, Oct 24 • 10:30 AM</span>
         </div>
-        <span className="text-[9px] font-semibold text-indigo-600">In 3 days</span>
+        <span className="text-[9px] font-semibold text-indigo-600">{t('previewUi.inDays')}</span>
       </motion.div>
     </div>
   );
 };
 
 const HealthTimelinePreview: React.FC = () => {
+  const { t } = useTranslation();
   const events = [
-    { title: "Symptoms Recorded", date: "Oct 12" },
-    { title: "Consultation Completed", date: "Oct 14" },
-    { title: "Prescription Active", date: "Oct 14" },
-    { title: "Lab Report Reviewed", date: "Oct 18" }
+    { title: t('previewUi.symptoms'), date: "Oct 12" },
+    { title: t('previewUi.consultation'), date: "Oct 14" },
+    { title: t('previewUi.prescription'), date: "Oct 14" },
+    { title: t('previewUi.labReviewed'), date: "Oct 18" }
   ];
 
   return (
@@ -377,6 +380,8 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
 /* -------------------------------------------------------------------------- */
 
 export const Features: React.FC = () => {
+  const { t } = useTranslation();
+  const localizedCards = t('featuresPage.cards', { returnObjects: true }) as Array<{ title: string; description: string; bullets: string[] }>;
   const features = [
     {
       icon: ClipboardList,
@@ -471,10 +476,10 @@ export const Features: React.FC = () => {
         {/* Section Header */}
         <div className="max-w-3xl mb-16 md:mb-24">
           <h2 className="text-3xl md:text-5xl font-extrabold font-heading text-nuraText leading-[1.15] mb-6 tracking-tight">
-            Everything you need after leaving the doctor's office.
+            {t('featuresPage.title')}
           </h2>
           <p className="text-lg text-nuraTextSecondary leading-relaxed font-normal opacity-90">
-            Understand consultations, prescriptions, lab reports, follow-up visits, and your complete health journey in one place.
+            {t('featuresPage.subtitle')}
           </p>
         </div>
 
@@ -484,9 +489,9 @@ export const Features: React.FC = () => {
             <FeatureCard 
               key={index}
               icon={feature.icon}
-              title={feature.title}
-              description={feature.description}
-              bullets={feature.bullets}
+              title={localizedCards[index].title}
+              description={localizedCards[index].description}
+              bullets={localizedCards[index].bullets}
               preview={feature.preview}
               iconBgClass={feature.iconBgClass}
               iconTextClass={feature.iconTextClass}

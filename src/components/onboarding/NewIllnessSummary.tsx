@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '../common/Button';
 import { AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface NewIllnessSummaryProps {
   symptoms: string;
@@ -20,6 +21,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
   isSaving = false,
   errorMessage = null,
 }) => {
+  const { t } = useTranslation();
   const [recordedAt] = useState(() => new Date());
   const formattedRecordedAt = `${recordedAt.toLocaleDateString(undefined, {
     day: 'numeric',
@@ -53,7 +55,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
             transition={{ duration: 0.4, delay: 0.05, ease: 'easeOut' }}
             className="text-xs font-semibold text-nuraTextSecondary tracking-[0.3em] uppercase"
           >
-            READY FOR YOUR VISIT.
+            {t('workflow.ready')}
           </motion.p>
         </div>
 
@@ -65,10 +67,10 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
           className="space-y-3"
         >
           <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight">
-            Here's everything<br />you've shared.
+            {t('workflow.summaryTitle')}
           </h1>
           <p className="font-sans text-base sm:text-lg text-nuraTextSecondary font-medium">
-            We'll organize this into a clear summary for your consultation.
+            {t('workflow.summaryHelp')}
           </p>
         </motion.div>
 
@@ -94,7 +96,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
           {/* Card Header Title */}
           <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
             <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">
-              Consultation Summary
+              {t('workflow.consultationSummary')}
             </span>
             <span className="text-xs font-normal text-gray-400/80 tracking-wide">
               {formattedRecordedAt}
@@ -123,10 +125,10 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
               transition={{ duration: 0.4, delay: 0.30, ease: 'easeOut' }}
             >
               <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-                Symptoms
+                {t('dashboard.symptoms')}
               </h4>
               <p className="text-sm sm:text-base text-white leading-relaxed font-semibold whitespace-pre-wrap">
-                {symptoms || 'No symptoms specified.'}
+                {symptoms || t('transition.noSymptoms')}
               </p>
             </motion.div>
 
@@ -137,7 +139,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
               transition={{ duration: 0.4, delay: 0.38, ease: 'easeOut' }}
             >
               <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-                Severity
+                {t('dashboard.severity')}
               </h4>
               <p className="text-sm sm:text-base font-semibold text-white">
                 {severity !== null ? `${severity} / 10` : 'Not specified'}
@@ -151,7 +153,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
               transition={{ duration: 0.4, delay: 0.46, ease: 'easeOut' }}
             >
               <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-                Duration
+                {t('dashboard.duration')}
               </h4>
               <p className="text-sm sm:text-base font-semibold text-white">
                 {duration || 'Not specified'}
@@ -174,7 +176,7 @@ export const NewIllnessSummary: React.FC<NewIllnessSummaryProps> = ({
             disabled={isSaving}
             className="w-full sm:w-auto min-w-[200px] py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Continue →'}
+            {isSaving ? t('common.saving') : t('common.continue')}
           </Button>
         </motion.div>
       </motion.div>

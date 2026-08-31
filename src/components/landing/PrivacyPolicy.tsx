@@ -12,6 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import { LandingNavbar } from './LandingNavbar';
+import { useTranslation } from 'react-i18next';
 
 interface PrivacyPolicyProps {
   onBackToHome: () => void;
@@ -19,6 +20,10 @@ interface PrivacyPolicyProps {
 }
 
 export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onStartJourney }) => {
+  const { t } = useTranslation();
+  const collectItems = t('privacyPage.collectItems', { returnObjects: true }) as string[];
+  const useItems = t('privacyPage.useItems', { returnObjects: true }) as string[];
+  const thirdItems = t('privacyPage.thirdItems', { returnObjects: true }) as string[];
   return (
     <div className="min-h-screen bg-white text-nuraText font-sans relative selection:bg-primary/10 selection:text-primary overflow-x-hidden">
       {/* Animated Ambient Light Background Effect */}
@@ -40,7 +45,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-nuraTextSecondary bg-white border border-gray-200/80 rounded-xl shadow-xs hover:bg-gray-50 hover:text-nuraText transition-all duration-200 cursor-pointer group"
               >
                 <ArrowLeft className="w-4 h-4 text-primary group-hover:-translate-x-1 transition-transform" />
-                Back to Home
+                {t('privacyPage.back')}
               </button>
             </div>
 
@@ -48,20 +53,20 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
             <div className="text-left mb-16 space-y-4 animate-fade-in">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100/60 text-primary text-xs font-bold uppercase tracking-wider shadow-xs">
                 <Shield className="w-3.5 h-3.5 text-primary" />
-                <span>Privacy</span>
+                <span>{t('privacyPage.badge')}</span>
               </div>
               
               <h1 className="text-3xl md:text-5xl font-extrabold font-heading text-nuraText leading-[1.15] tracking-tight">
-                Privacy Policy
+                {t('privacyPage.title')}
               </h1>
               
               <div className="flex items-center gap-2 text-xs font-semibold text-nuraTextSecondary uppercase tracking-wider pt-1">
-                <span>Last Updated:</span>
-                <span className="text-primary bg-blue-50/80 px-2.5 py-1 rounded-md border border-blue-100/50">August 2026</span>
+                <span>{t('privacyPage.updated')}</span>
+                <span className="text-primary bg-blue-50/80 px-2.5 py-1 rounded-md border border-blue-100/50">{t('privacyPage.updatedValue')}</span>
               </div>
 
               <p className="text-base sm:text-lg text-nuraTextSecondary leading-relaxed font-normal opacity-95 pt-2 max-w-3xl">
-                Nura values your privacy and is committed to protecting your personal healthcare information. This Privacy Policy explains what information is collected, how it is used, and how it is protected.
+                {t('privacyPage.intro')}
               </p>
             </div>
 
@@ -75,23 +80,16 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                     <Database className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold font-heading text-nuraText">
-                    Information We Collect
+                    {t('privacyPage.collect')}
                   </h2>
                 </div>
                 
                 <p className="text-sm sm:text-base text-nuraTextSecondary mb-4">
-                  We may collect information including:
+                  {t('privacyPage.collectIntro')}
                 </p>
                 
                 <ul className="space-y-3">
-                  {[
-                    "Basic account information",
-                    "Consultation summaries",
-                    "Prescription information",
-                    "Laboratory reports",
-                    "Follow-up visit information",
-                    "Questions you save before appointments"
-                  ].map((item, idx) => (
+                  {collectItems.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-3 text-sm sm:text-base text-nuraTextSecondary/90">
                       <div className="mt-1.5 flex-shrink-0 w-4 h-4 rounded-full bg-blue-50 flex items-center justify-center">
                         <Check className="w-2.5 h-2.5 text-primary" />
@@ -109,22 +107,16 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                     <Activity className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold font-heading text-nuraText">
-                    How Your Information Is Used
+                    {t('privacyPage.use')}
                   </h2>
                 </div>
                 
                 <p className="text-sm sm:text-base text-nuraTextSecondary mb-4">
-                  Your information is used to:
+                  {t('privacyPage.useIntro')}
                 </p>
                 
                 <ul className="space-y-3">
-                  {[
-                    "Organize your healthcare journey",
-                    "Display consultation information",
-                    "Explain lab reports",
-                    "Manage follow-up visits",
-                    "Improve your experience within Nura"
-                  ].map((item, idx) => (
+                  {useItems.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-3 text-sm sm:text-base text-nuraTextSecondary/90">
                       <div className="mt-1.5 flex-shrink-0 w-4 h-4 rounded-full bg-emerald-50 flex items-center justify-center">
                         <Check className="w-2.5 h-2.5 text-emerald-600" />
@@ -142,17 +134,17 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold font-heading text-nuraText">
-                    Data Security
+                    {t('privacyPage.security')}
                   </h2>
                 </div>
                 
                 <div className="space-y-4 text-sm sm:text-base text-nuraTextSecondary leading-relaxed">
                   <p className="font-semibold text-nuraText">
-                    We are committed to protecting your information using secure technologies and best practices.
+                    {t('privacyPage.securityText')}
                   </p>
                   <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-xs sm:text-sm text-nuraTextSecondary">
-                    <span className="font-semibold text-nuraText">Prototype Notice: </span>
-                    This project is currently developed as an educational prototype. Production deployments should implement secure authentication, encrypted storage, and appropriate healthcare data protection measures.
+                    <span className="font-semibold text-nuraText">{t('privacyPage.prototype')} </span>
+                    {t('privacyPage.prototypeText')}
                   </div>
                 </div>
               </div>
@@ -164,16 +156,16 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                     <AlertCircle className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold font-heading text-nuraText">
-                    Medical Disclaimer
+                    {t('privacyPage.disclaimer')}
                   </h2>
                 </div>
                 
                 <div className="space-y-4 text-sm sm:text-base text-nuraTextSecondary leading-relaxed">
                   <p>
-                    Nura does not provide medical diagnoses or replace professional healthcare advice.
+                    {t('privacyPage.disclaimerText')}
                   </p>
                   <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/60 text-sm sm:text-base font-semibold text-amber-900">
-                    Always consult a qualified healthcare professional before making medical decisions.
+                    {t('privacyPage.disclaimerStrong')}
                   </div>
                 </div>
               </div>
@@ -185,20 +177,16 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                     <Globe className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold font-heading text-nuraText">
-                    Third-Party Services
+                    {t('privacyPage.thirdParty')}
                   </h2>
                 </div>
                 
                 <p className="text-sm sm:text-base text-nuraTextSecondary mb-4">
-                  Future versions of Nura may integrate services such as:
+                  {t('privacyPage.thirdIntro')}
                 </p>
                 
                 <ul className="space-y-3 mb-4">
-                  {[
-                    "Authentication providers",
-                    "Database services",
-                    "AI providers for explanation features"
-                  ].map((item, idx) => (
+                  {thirdItems.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-3 text-sm sm:text-base text-nuraTextSecondary/90">
                       <div className="mt-1.5 flex-shrink-0 w-4 h-4 rounded-full bg-purple-50 flex items-center justify-center">
                         <Check className="w-2.5 h-2.5 text-purple-600" />
@@ -209,7 +197,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                 </ul>
 
                 <p className="text-sm sm:text-base text-nuraTextSecondary">
-                  These services may process information according to their own privacy policies.
+                  {t('privacyPage.thirdText')}
                 </p>
               </div>
 
@@ -220,12 +208,12 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                     <UserCheck className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold font-heading text-nuraText">
-                    Your Rights
+                    {t('privacyPage.rights')}
                   </h2>
                 </div>
                 
                 <p className="text-sm sm:text-base text-nuraTextSecondary leading-relaxed">
-                  Users may request access to, correction of, or deletion of their personal information, subject to applicable laws and future implementation.
+                  {t('privacyPage.rightsText')}
                 </p>
               </div>
 
@@ -236,17 +224,17 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                     <Mail className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold font-heading text-nuraText">
-                    Contact
+                    {t('privacyPage.contact')}
                   </h2>
                 </div>
                 
                 <div className="space-y-3 text-sm sm:text-base text-nuraTextSecondary leading-relaxed">
                   <p>
-                    Questions regarding privacy can be directed to the Nura development team.
+                    {t('privacyPage.contactText')}
                   </p>
                   <div>
-                    <span className="font-semibold text-nuraText">Email:</span>
-                    <span className="ml-2 text-nuraTextSecondary">Coming soon</span>
+                    <span className="font-semibold text-nuraText">{t('privacyPage.email')}</span>
+                    <span className="ml-2 text-nuraTextSecondary">{t('privacyPage.comingSoon')}</span>
                   </div>
                 </div>
               </div>

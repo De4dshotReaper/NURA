@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Mail, Lock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { supabase } from '../../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 interface LoginPageProps {
   onBackToHome: () => void;
@@ -15,6 +16,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onLoginSuccess,
   initialMode = 'signin',
 }) => {
+  const { t } = useTranslation();
   const [isSignUp, setIsSignUp] = useState<boolean>(initialMode === 'signup');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -37,23 +39,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setSuccessMessage('');
 
     if (isSignUp && !fullName.trim()) {
-      setNameError('Please enter your full name.');
+      setNameError(t('settings.nameRequired'));
       isValid = false;
     }
 
     if (!email.trim()) {
-      setEmailError('Email address is required.');
+      setEmailError(t('auth.emailRequired'));
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError('Please enter a valid email address.');
+      setEmailError(t('auth.emailInvalid'));
       isValid = false;
     }
 
     if (!password) {
-      setPasswordError('Password is required.');
+      setPasswordError(t('auth.passwordRequired'));
       isValid = false;
     } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
+      setPasswordError(t('auth.passwordLength'));
       isValid = false;
     }
 
@@ -105,7 +107,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         }
       }
     } catch (err: any) {
-      setAuthError(err?.message || 'An unexpected error occurred during authentication.');
+      setAuthError(err?.message || t('auth.unexpected'));
     } finally {
       setLoading(false);
     }
@@ -129,7 +131,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-nuraTextSecondary bg-white border border-gray-200/80 rounded-xl shadow-xs hover:bg-gray-50 hover:text-nuraText transition-all duration-200 cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 text-primary group-hover:-translate-x-1 transition-transform" />
-            Back to Home
+            {t('auth.backHome')}
           </button>
 
           {/* Minimal Nura Logo */}
@@ -153,12 +155,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <span className="font-heading font-bold text-2xl leading-none">N</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold font-heading text-nuraText tracking-tight">
-                {isSignUp ? 'Create your Nura account' : 'Welcome back to Nura'}
+                {isSignUp ? t('auth.create') : t('auth.welcome')}
               </h1>
               <p className="text-sm text-nuraTextSecondary font-medium">
                 {isSignUp
-                  ? 'Start organizing your healthcare journey today'
-                  : 'Sign in to access your consultations, prescriptions, and lab reports'}
+                  ? t('auth.signupHelp')
+                  : t('auth.signinHelp')}
               </p>
             </div>
 
@@ -167,7 +169,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200/80 flex items-start gap-3 animate-fade-in text-left">
                 <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-red-900">Authentication Error</p>
+                  <p className="text-sm font-semibold text-red-900">{t('auth.authError')}</p>
                   <p className="text-xs text-red-700 leading-relaxed">{authError}</p>
                 </div>
               </div>
@@ -189,7 +191,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               {isSignUp && (
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-nuraText uppercase tracking-wider">
-                    Full Name
+                    {t('auth.fullName')}
                   </label>
                   <input
                     type="text"
@@ -217,7 +219,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-nuraText uppercase tracking-wider">
-                  Email Address
+                  {t('auth.email')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-nuraTextSecondary/50">
@@ -250,7 +252,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-nuraText uppercase tracking-wider">
-                    Password
+                    {t('auth.password')}
                   </label>
                 </div>
                 <div className="relative">
@@ -294,7 +296,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     {isSignUp ? 'Creating Account...' : 'Signing In...'}
                   </span>
                 ) : (
-                  isSignUp ? 'Create Account' : 'Sign In'
+                  isSignUp ? t('auth.signUp') : t('auth.signIn')
                 )}
               </Button>
             </form>
@@ -302,7 +304,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             {/* Switch between Sign In and Create Account */}
             <div className="mt-8 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-nuraTextSecondary">
-                {isSignUp ? 'Already have an account?' : "Don't have an account yet?"}{' '}
+                {isSignUp ? t('auth.haveAccount') : t('auth.needAccount')}{' '}
                 <button
                   type="button"
                   disabled={loading}
@@ -316,7 +318,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   }}
                   className="font-semibold text-primary hover:underline ml-1 cursor-pointer focus:outline-none disabled:opacity-50"
                 >
-                  {isSignUp ? 'Sign In' : 'Create account'}
+                  {isSignUp ? t('auth.signIn') : t('auth.signUp')}
                 </button>
               </p>
             </div>
@@ -326,7 +328,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
         {/* Footer info */}
         <footer className="py-6 text-center text-xs text-nuraTextSecondary/70">
-          <p>© 2026 Nura Healthcare. Prototype development version.</p>
+          <p>{t('auth.footer')}</p>
         </footer>
       </div>
     </div>

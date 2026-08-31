@@ -12,8 +12,10 @@ import {
   ChevronRight,
   ShieldCheck
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const FloatingPreviewCards: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="relative w-full max-w-2xl lg:max-w-3xl mx-auto py-8">
       {/* 8. Soft Ambient Light: Behind ONLY the workspace, subtle radial glow, low opacity, blue with hint of teal */}
@@ -29,8 +31,8 @@ export const FloatingPreviewCards: React.FC = () => {
               <Sparkles className="w-4.5 h-4.5" />
             </div>
             <div>
-              <p className="text-xs font-bold text-nuraText tracking-tight">Visit Preparation</p>
-              <p className="text-[11px] text-nuraTextSecondary font-medium">Key questions structured</p>
+              <p className="text-xs font-bold text-nuraText tracking-tight">{t('landingPreview.visitPrep')}</p>
+              <p className="text-[11px] text-nuraTextSecondary font-medium">{t('landingPreview.questionsStructured')}</p>
             </div>
           </div>
         </div>
@@ -42,8 +44,8 @@ export const FloatingPreviewCards: React.FC = () => {
               <ShieldCheck className="w-4.5 h-4.5" />
             </div>
             <div>
-              <p className="text-xs font-bold text-nuraText tracking-tight">Doctor Note Simplified</p>
-              <p className="text-[11px] text-nuraTextSecondary font-medium">Clear clinical insights</p>
+              <p className="text-xs font-bold text-nuraText tracking-tight">{t('landingPreview.noteSimplified')}</p>
+              <p className="text-[11px] text-nuraTextSecondary font-medium">{t('landingPreview.clinicalInsights')}</p>
             </div>
           </div>
         </div>
@@ -59,14 +61,14 @@ export const FloatingPreviewCards: React.FC = () => {
               </div>
               <span className="text-xs font-bold text-nuraText flex items-center gap-2">
                 <Stethoscope className="w-4 h-4 text-primary" />
-                Today's Consultation
+                {t('landingPreview.today')}
               </span>
             </div>
             {/* 9. TINY MAGIC: Gentle shimmer across Active Session badge */}
             <div className="relative overflow-hidden px-3 py-1 rounded-full bg-blue-50/90 text-primary border border-blue-100/80 text-[11px] font-bold tracking-wide uppercase shadow-2xs">
               <span className="relative z-10 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                Active Session
+                {t('landingPreview.activeSession')}
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-full animate-shimmer" style={{ animationDuration: '12s' }} />
             </div>
@@ -83,15 +85,15 @@ export const FloatingPreviewCards: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-nuraTextSecondary uppercase tracking-widest flex items-center gap-2">
                     <Activity className="w-4 h-4 text-teal-600" />
-                    Symptoms Logged
+                    {t('landingPreview.symptomsLogged')}
                   </span>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[13px] font-bold text-nuraText">
-                    Mild Tension & Sleep Fatigue
+                    {t('landingPreview.sampleSymptoms')}
                   </p>
                   <p className="text-xs text-nuraTextSecondary leading-relaxed line-clamp-2 font-normal">
-                    Occasional morning headaches, energy dips post-noon.
+                    {t('landingPreview.sampleSymptomsHelp')}
                   </p>
                 </div>
               </div>
@@ -101,15 +103,15 @@ export const FloatingPreviewCards: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-nuraTextSecondary uppercase tracking-widest flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
-                    Follow-up
+                    {t('landingPreview.followUp')}
                   </span>
                   <span className="text-[10px] font-bold text-amber-700 bg-amber-50/90 px-2 py-0.5 rounded-md border border-amber-100/80">
-                    In 3 Days
+                    {t('landingPreview.inDays')}
                   </span>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[13px] font-bold text-nuraText">
-                    Routine Cardiology Check
+                    {t('landingPreview.routine')}
                   </p>
                   <div className="flex items-center text-xs text-nuraTextSecondary gap-1.5 pt-0.5 font-medium">
                     <Clock className="w-3.5 h-3.5 text-primary opacity-80" />
@@ -128,12 +130,12 @@ export const FloatingPreviewCards: React.FC = () => {
               <div className="flex items-center justify-between pt-1">
                 <span className="text-xs font-bold text-primary flex items-center gap-2">
                   <Sparkles className="w-4.5 h-4.5 text-primary" />
-                  Consultation Summary
+                  {t('landingPreview.consultationSummary')}
                 </span>
-                <span className="text-[11px] font-medium text-nuraTextSecondary/70">Updated Today</span>
+                <span className="text-[11px] font-medium text-nuraTextSecondary/70">{t('landingPreview.updated')}</span>
               </div>
               <p className="text-[13px] text-nuraText leading-relaxed font-normal">
-                "Patient responded well to initial lifestyle adjustments. Blood pressure readings are stable. Adjusting dosage slightly to maintain evening consistency."
+                “{t('landingPreview.sampleSummary')}”
               </p>
             </div>
 
@@ -145,7 +147,7 @@ export const FloatingPreviewCards: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-nuraTextSecondary uppercase tracking-widest flex items-center gap-2">
                     <Pill className="w-4 h-4 text-blue-600" />
-                    Medicine
+                    {t('landingPreview.medicine')}
                   </span>
                   <span className="text-[10px] font-bold text-blue-700 bg-blue-50/90 px-2 py-0.5 rounded-md border border-blue-100/80">
                     10 mg • Daily
@@ -167,10 +169,10 @@ export const FloatingPreviewCards: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-nuraTextSecondary uppercase tracking-widest flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-600" />
-                    Results
+                    {t('landingPreview.results')}
                   </span>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50/90 px-2 py-0.5 rounded-md border border-emerald-100/80 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Normal
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t('landingPreview.normal')}
                   </span>
                 </div>
                 <p className="text-[13px] font-bold text-nuraText">
@@ -191,12 +193,12 @@ export const FloatingPreviewCards: React.FC = () => {
                   <HelpCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-nuraText">Questions for Your Doctor</p>
-                  <p className="text-xs text-nuraTextSecondary font-medium">3 questions prepared for next visit</p>
+                  <p className="text-[13px] font-bold text-nuraText">{t('landingPreview.questionsDoctor')}</p>
+                  <p className="text-xs text-nuraTextSecondary font-medium">{t('landingPreview.threeQuestions')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline cursor-pointer group">
-                <span>View All</span>
+                <span>{t('landingPreview.viewAll')}</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
@@ -209,4 +211,3 @@ export const FloatingPreviewCards: React.FC = () => {
     </div>
   );
 };
-

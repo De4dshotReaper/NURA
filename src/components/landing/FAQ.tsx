@@ -1,48 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, HelpCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface FAQItem {
   question: string;
   answer: string;
 }
 
-const faqData: FAQItem[] = [
-  {
-    question: "What is Nura?",
-    answer: "Nura is a patient companion that helps you understand your consultation, prescriptions, lab reports, and follow-up visits after leaving the doctor's office."
-  },
-  {
-    question: "Is Nura a replacement for a doctor?",
-    answer: "No. Nura is designed to help you better understand your healthcare information. Always follow the advice of your healthcare professional."
-  },
-  {
-    question: "Does Nura diagnose illnesses?",
-    answer: "No. Nura does not provide medical diagnoses. It explains information from your consultation and medical documents in simple language."
-  },
-  {
-    question: "Can I upload my lab reports?",
-    answer: "Yes. Upload supported laboratory reports to receive simplified explanations, highlighted findings, and reference ranges."
-  },
-  {
-    question: "How does the follow-up visit work?",
-    answer: "During a follow-up visit, Nura helps you review your recovery, organize your symptoms, prepare questions, and keep track of your healthcare journey."
-  },
-  {
-    question: "Is my medical information private?",
-    answer: "Yes. Your health information is stored securely and is only used to provide the features you choose to use. (Later, when you actually implement Supabase/auth, you can make this statement more specific.)"
-  },
-  {
-    question: "Which medical documents are supported?",
-    answer: "Nura currently supports consultation summaries, prescriptions, and common laboratory reports. Support for additional document types may be added in future versions."
-  },
-  {
-    question: "Can I access previous consultations?",
-    answer: "Yes. Your dashboard includes a health timeline where you can view previous consultations, prescriptions, lab reports, and follow-up visits in chronological order."
-  }
-];
-
 export const FAQ: React.FC = () => {
+  const { t } = useTranslation();
+  const faqData = t('faq.items', { returnObjects: true }) as FAQItem[];
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const toggleAccordion = (index: number) => {
@@ -56,13 +24,13 @@ export const FAQ: React.FC = () => {
         <div className="text-center max-w-2xl mx-auto mb-16 md:mb-20 space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100/60 text-primary text-xs font-bold uppercase tracking-wider shadow-xs">
             <HelpCircle className="w-3.5 h-3.5 text-primary" />
-            <span>Got Questions?</span>
+            <span>{t('faq.badge')}</span>
           </div>
           <h2 className="text-3xl md:text-5xl font-extrabold font-heading text-nuraText leading-[1.15] tracking-tight">
-            Frequently Asked Questions
+            {t('faq.title')}
           </h2>
           <p className="text-base sm:text-lg text-nuraTextSecondary leading-relaxed font-normal opacity-90">
-            Everything you need to know about how Nura helps you navigate your healthcare journey.
+            {t('faq.subtitle')}
           </p>
         </div>
 

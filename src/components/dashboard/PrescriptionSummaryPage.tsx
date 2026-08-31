@@ -16,6 +16,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import type { ExtractedMedicine } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const defaultMedicines: ExtractedMedicine[] = [
   {
@@ -57,6 +58,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
   medicines,
   isExplanationLoading = false,
 }) => {
+  const { t } = useTranslation();
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
     '0': true, // First card open by default
   });
@@ -86,7 +88,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
             className="inline-flex items-center gap-2 text-xs font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Medicines</span>
+            <span>{t('documents.backMedicines')}</span>
           </button>
         </div>
       )}
@@ -94,13 +96,13 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
       {/* HEADER SECTION */}
       <div className="space-y-3 pt-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/80 text-primary text-xs font-semibold tracking-wider uppercase">
-          PRESCRIPTION SUMMARY
+          {t('documents.prescriptionSummary')}
         </div>
         <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight">
-          Your medicines, explained simply.
+          {t('summaryUi.medTitle')}
         </h1>
         <p className="font-sans text-base sm:text-lg text-nuraTextSecondary max-w-2xl leading-relaxed font-medium">
-          Everything has been organized into easy-to-understand information you can review before taking your medicines.
+          {t('summaryUi.medSubtitle')}
         </p>
       </div>
 
@@ -121,10 +123,10 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
             <div className="flex items-center gap-3 text-xs text-nuraTextSecondary font-medium">
               <span className="inline-flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 opacity-70" />
-                Uploaded {uploadDate}
+                {t('documents.uploaded')} {uploadDate}
               </span>
               <span>•</span>
-              <span>{displayMedicines.length} medicines detected</span>
+              <span>{t('summaryUi.detected', { count: displayMedicines.length })}</span>
               <span>•</span>
               <span className="uppercase font-semibold text-nuraText">{fileType}</span>
             </div>
@@ -135,7 +137,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
           onClick={() => setShowOriginalModal(true)}
           className="px-5 py-2.5 rounded-xl border border-gray-200/80 bg-gray-50/50 hover:bg-gray-100/80 text-nuraText font-semibold text-sm transition-all duration-200 cursor-pointer inline-flex items-center gap-2 shadow-2xs"
         >
-          <span>View Original Prescription</span>
+          <span>{t('documents.originalPrescription')}</span>
           <ExternalLink className="w-4 h-4 opacity-60" />
         </button>
       </motion.div>
@@ -144,12 +146,12 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
       <div className="space-y-6">
         <div className="space-y-1">
           <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-            Prescribed Medicines
+            {t('summaryUi.prescribed')}
           </h2>
           <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary">
             {isExplanationLoading
-              ? 'Preparing general medicine information…'
-              : 'Prescription details are shown alongside general medicine information.'}
+              ? t('summaryUi.preparing')
+              : t('summaryUi.alongside')}
           </p>
         </div>
 
@@ -176,15 +178,15 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                     <div className="space-y-1">
                       <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="font-heading font-extrabold text-lg sm:text-xl text-nuraText group-hover:text-primary transition-colors">
-                          {medicine.name || 'Not specified on prescription'}
+                          {medicine.name || t('documents.notSpecified')}
                         </h3>
                         <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          {medicine.confidence ? `${medicine.confidence.charAt(0).toUpperCase() + medicine.confidence.slice(1)} confidence` : 'Confidence not specified'}
+                          {medicine.confidence ? t('summaryUi.confidence', { value: medicine.confidence }) : t('summaryUi.confidenceUnknown')}
                         </span>
                       </div>
                       <p className="text-xs text-nuraTextSecondary font-medium">
-                        Dosage: <span className="text-nuraText">{medicine.dosage || 'Not specified on prescription'}</span> • Frequency: <span className="text-nuraText">{medicine.frequency || 'Not specified on prescription'}</span>
+                        {t('documents.dosage')}: <span className="text-nuraText">{medicine.dosage || t('documents.notSpecified')}</span> • {t('documents.frequency')}: <span className="text-nuraText">{medicine.frequency || t('documents.notSpecified')}</span>
                       </p>
                     </div>
                   </div>
@@ -212,10 +214,10 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <Pill className="w-3.5 h-3.5 text-primary" />
-                          <span>Dosage</span>
+                          <span>{t('documents.dosage')}</span>
                         </div>
                         <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                          {medicine.dosage || 'Not specified on prescription'}
+                          {medicine.dosage || t('documents.notSpecified')}
                         </p>
                       </div>
 
@@ -223,10 +225,10 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <Clock className="w-3.5 h-3.5 text-primary" />
-                          <span>Frequency</span>
+                          <span>{t('documents.frequency')}</span>
                         </div>
                         <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                          {medicine.frequency || 'Not specified on prescription'}
+                          {medicine.frequency || t('documents.notSpecified')}
                         </p>
                       </div>
 
@@ -234,10 +236,10 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Instructions</span>
+                          <span>{t('documents.instructions')}</span>
                         </div>
                         <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                          {medicine.instructions || 'Not specified on prescription'}
+                          {medicine.instructions || t('documents.notSpecified')}
                         </p>
                       </div>
 
@@ -245,23 +247,23 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       <div className="space-y-1.5 pt-2 border-t border-gray-200/60">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70 mb-1.5">
                           <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>What It&apos;s For — General Information</span>
+                          <span>{t('documents.generalPurpose')}</span>
                         </div>
                         <p className="font-sans text-sm text-nuraText font-medium bg-white p-4 rounded-xl border border-gray-200/60 shadow-2xs">
                           {isExplanationLoading
-                            ? 'General medicine information is being prepared.'
-                            : medicine.whatItsFor || 'General educational information is not available.'}
+                            ? t('summaryUi.educationPreparing')
+                            : medicine.whatItsFor || t('summaryUi.educationMissing')}
                         </p>
                       </div>
 
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Common Side Effects — General Information</span>
+                          <span>{t('documents.generalSideEffects')}</span>
                         </div>
                         {isExplanationLoading ? (
                           <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                            General medicine information is being prepared.
+                            {t('summaryUi.educationPreparing')}
                           </p>
                         ) : medicine.commonSideEffects && medicine.commonSideEffects.length > 0 ? (
                           <ul className="space-y-1.5 pl-5.5">
@@ -274,7 +276,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                           </ul>
                         ) : (
                           <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                            General educational information is not available.
+                            {t('summaryUi.educationMissing')}
                           </p>
                         )}
                       </div>
@@ -282,11 +284,11 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
                           <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Things to Remember — General Information</span>
+                          <span>{t('documents.remember')}</span>
                         </div>
                         {isExplanationLoading ? (
                           <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                            General medicine information is being prepared.
+                            {t('summaryUi.educationPreparing')}
                           </p>
                         ) : medicine.thingsToRemember && medicine.thingsToRemember.length > 0 ? (
                           <ul className="space-y-1.5 pl-5.5">
@@ -299,7 +301,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                           </ul>
                         ) : (
                           <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed pl-5.5">
-                            General educational information is not available.
+                            {t('summaryUi.educationMissing')}
                           </p>
                         )}
                       </div>
@@ -324,10 +326,10 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
         </div>
         <div className="space-y-2">
           <h4 className="font-heading font-bold text-base text-nuraText">
-            Keep your original prescription.
+            {t('summaryUi.keepOriginal')}
           </h4>
           <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-            Always follow your doctor's instructions. This page is meant to help you better understand your medicines and should not replace professional medical advice.
+            {t('summaryUi.medicineDisclaimer')}
           </p>
         </div>
       </motion.div>
@@ -360,7 +362,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                       {prescriptionTitle}
                     </h3>
                     <p className="text-xs text-nuraTextSecondary">
-                      Uploaded on {uploadDate} • Verified Prescription
+                      {t('summaryUi.uploadedOn', { date: uploadDate })}
                     </p>
                   </div>
                 </div>
@@ -378,12 +380,12 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                   <FileText className="w-8 h-8" />
                 </div>
                 <div className="space-y-2 max-w-sm mx-auto">
-                  <h4 className="font-heading font-bold text-xl text-nuraText">Prescription Summary</h4>
+                  <h4 className="font-heading font-bold text-xl text-nuraText">{t('documents.prescriptionSummary')}</h4>
                   <div className="pt-4 text-left text-xs text-nuraText space-y-2 border-t border-gray-200">
-                    <p><strong>Date:</strong> {uploadDate}</p>
-                    <p><strong>Medicines:</strong></p>
+                    <p><strong>{t('documents.date')}:</strong> {uploadDate}</p>
+                    <p><strong>{t('documents.medicines')}:</strong></p>
                     {displayMedicines.map((m, i) => (
-                      <p key={i}>{i + 1}. {m.name || 'Not specified on prescription'} — {m.dosage || 'Not specified on prescription'}, {m.frequency || 'Not specified on prescription'}</p>
+                      <p key={i}>{i + 1}. {m.name || t('documents.notSpecified')} — {m.dosage || t('documents.notSpecified')}, {m.frequency || t('documents.notSpecified')}</p>
                     ))}
                   </div>
                 </div>
@@ -398,13 +400,13 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
                 </button>
                 <button
                   onClick={() => {
-                    alert('Prescription downloaded successfully.');
+                    alert(t('summaryUi.downloaded'));
                     setShowOriginalModal(false);
                   }}
                   className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-blue-600 transition-colors cursor-pointer inline-flex items-center gap-2 shadow-lg shadow-blue-500/10"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download PDF</span>
+                  <span>{t('documents.downloadPdf')}</span>
                 </button>
               </div>
             </motion.div>

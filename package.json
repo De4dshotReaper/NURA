@@ -12,9 +12,11 @@
     "@supabase/supabase-js": "^2.112.2",
     "@types/three": "^0.185.1",
     "framer-motion": "^12.43.0",
+    "i18next": "^26.4.0",
     "lucide-react": "^1.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-i18next": "^17.0.12",
     "react-router-dom": "^7.1.1",
     "tesseract.js": "^7.0.0",
     "three": "^0.185.1"

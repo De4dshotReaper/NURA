@@ -12,6 +12,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import type { ExtractedMedicine, LabParameter } from '../../types';
 import { TimelineEventCard } from './TimelineEventCard';
+import { useTranslation } from 'react-i18next';
 
 interface TimelineStep {
   id: string;
@@ -142,6 +143,7 @@ interface HealthTimelinePageProps {
 export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
   onBackToDashboard
 }) => {
+  const { t } = useTranslation();
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [events, setEvents] = useState<TimelineStep[]>([]);
@@ -166,10 +168,10 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
           category: 'symptoms',
           description: row.symptoms,
           details: [
-              row.severity !== null ? `Severity: ${row.severity} / 10` : null,
-              row.duration ? `Duration: ${row.duration}` : null,
+              row.severity !== null ? `${t('dashboard.severity')}: ${row.severity} / 10` : null,
+              row.duration ? `${t('dashboard.duration')}: ${row.duration}` : null,
             ].filter((detail): detail is string => Boolean(detail)),
-          badge: 'Recorded',
+          badge: t('timelineDetail.recorded'),
           badgeColor: 'bg-blue-50 text-primary border-blue-200/60',
           episodeId: row.id,
           icon: Activity,
@@ -202,7 +204,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
             description: `${row.file_name} (${row.file_type})`,
             details: details.length > 0 ? details : undefined,
             badge: medicines.length > 0
-              ? `${medicines.length} ${medicines.length === 1 ? 'Medication' : 'Medications'}`
+              ? t(medicines.length === 1 ? 'timelineDetail.medication' : 'timelineDetail.medications', { count: medicines.length })
               : undefined,
             badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
             icon: Pill,
@@ -235,7 +237,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
               .slice(0, 3)
               .map(summarizeParameter)
               .filter((detail): detail is string => Boolean(detail)) : undefined,
-            badge: 'Report Analyzed',
+            badge: t('timelineDetail.analyzed'),
             badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
             icon: FileCheck,
           };
@@ -264,15 +266,15 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
           const sideEffectsText = row.side_effects_text?.trim() ?? '';
           const questions = row.questions?.trim() ?? '';
           const details = [
-            progress ? `Recovery progress: ${progress}` : null,
-            medicineCompliance ? `Medicine compliance: ${medicineCompliance}` : null,
-            medicineReason ? `Medicine reason: ${medicineReason}` : null,
+            progress ? t('timelineDetail.recovery', { value: progress }) : null,
+            medicineCompliance ? t('timelineDetail.compliance', { value: medicineCompliance }) : null,
+            medicineReason ? t('timelineDetail.medicineReason', { value: medicineReason }) : null,
             row.has_side_effects
               ? sideEffectsText
-                ? `Side effects: ${sideEffectsText}`
-                : 'Side effects reported: Yes'
-              : 'Side effects reported: No',
-            questions ? `Questions: ${questions}` : null,
+                ? t('timelineDetail.sideEffects', { value: sideEffectsText })
+                : t('timelineDetail.sideEffectsYes')
+              : t('timelineDetail.sideEffectsNo'),
+            questions ? t('timelineDetail.questions', { value: questions }) : null,
           ].filter((detail): detail is string => Boolean(detail));
 
           return {
@@ -280,7 +282,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
             timestamp: row.created_at,
             title: 'Follow-up Recorded',
             category: 'followup' as const,
-            description: currentSymptoms || 'Follow-up information recorded.',
+            description: currentSymptoms || t('timelineDetail.followUpInfo'),
             details: details.length > 0 ? details : undefined,
             badge: progress || undefined,
             badgeColor: 'bg-teal-50 text-teal-700 border-teal-200/60',
@@ -321,9 +323,9 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
           timestamp: questions[0].created_at,
           title: 'Questions Prepared',
           category: 'questions' as const,
-          description: 'Questions prepared for your next appointment',
+          description: t('timelineDetail.questionsPrepared'),
           details: questions.map((row) => row.question),
-          badge: `${questions.length} ${questions.length === 1 ? 'Question' : 'Questions'}`,
+          badge: t(questions.length === 1 ? 'timelineDetail.question' : 'timelineDetail.questionsCount', { count: questions.length }),
           badgeColor: 'bg-amber-50 text-amber-700 border-amber-200/60',
           episodeId: symptomEntryId,
           linkedSymptomId: symptomEntryId,
@@ -399,20 +401,20 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
             ? consultation.consultation_at
             : consultation.created_at;
           const description = [doctorName, clinicName].filter(Boolean).join(' • ')
-            || 'Consultation details recorded';
+            || t('timelineDetail.consultationDetails');
           const prescriptionCount = prescriptionCounts.get(consultation.id) ?? 0;
           const labReportCount = labReportCounts.get(consultation.id) ?? 0;
           const details = [
-            notes ? `Notes: ${notes}` : null,
-            doctorName ? `Doctor: ${doctorName}` : null,
-            clinicName ? `Clinic: ${clinicName}` : null,
-            `Follow-up recommended: ${consultation.follow_up_recommended ? 'Yes' : 'No'}`,
-            followUpNotes ? `Follow-up notes: ${followUpNotes}` : null,
+            notes ? t('timelineDetail.notes', { value: notes }) : null,
+            doctorName ? t('timelineDetail.doctor', { value: doctorName }) : null,
+            clinicName ? t('timelineDetail.clinic', { value: clinicName }) : null,
+            t('timelineDetail.followUpRecommended', { value: consultation.follow_up_recommended ? t('common.yes') : t('common.no') }),
+            followUpNotes ? t('timelineDetail.followUpNotes', { value: followUpNotes }) : null,
             prescriptionCountsAvailable
-              ? `${prescriptionCount} ${prescriptionCount === 1 ? 'prescription' : 'prescriptions'} attached`
+              ? t(prescriptionCount === 1 ? 'timelineDetail.prescriptionAttached' : 'timelineDetail.prescriptionsAttached', { count: prescriptionCount })
               : null,
             labReportCountsAvailable
-              ? `${labReportCount} ${labReportCount === 1 ? 'lab report' : 'lab reports'} attached`
+              ? t(labReportCount === 1 ? 'timelineDetail.labAttached' : 'timelineDetail.labsAttached', { count: labReportCount })
               : null,
           ].filter((detail): detail is string => Boolean(detail));
 
@@ -423,7 +425,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
             category: 'consultation' as const,
             description,
             details,
-            badge: 'Consultation',
+            badge: t('timelineDetail.consultation'),
             badgeColor: 'bg-violet-50 text-violet-700 border-violet-200/60',
             episodeId: consultation.symptom_entry_id,
             linkedSymptomId: consultation.symptom_entry_id,
@@ -507,7 +509,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
         ]
       : step.details;
 
-    return <TimelineEventCard key={step.id} event={{ ...step, details: displayDetails, relationshipLabel }} expanded={isExpanded} isLastInGroup={isLastInGroup} onToggle={() => toggleExpand(step.id)} formatDate={formatDate} formatTime={formatTime} />;
+    return <TimelineEventCard key={step.id} event={{ ...step, details: displayDetails, relationshipLabel }} expanded={isExpanded} isLastInGroup={isLastInGroup} onToggle={() => toggleExpand(step.id)} />;
   };
 
   return (
@@ -525,7 +527,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
             className="inline-flex items-center gap-2 text-xs font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Dashboard</span>
+            <span>{t('common.backDashboard')}</span>
           </button>
         </div>
       )}
@@ -533,13 +535,13 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
       {/* Header Section */}
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/80 text-primary text-xs font-semibold tracking-wider uppercase">
-          CHRONOLOGICAL HEALTH TIMELINE
+          {t('timeline.eyebrow')}
         </div>
         <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight">
-          Your Complete Health Journey
+          {t('timeline.title')}
         </h1>
         <p className="font-sans text-base sm:text-lg text-nuraTextSecondary max-w-2xl leading-relaxed font-medium">
-          A continuous, chronological flow of all symptoms, consultations, lab reports, and follow-up milestones.
+          {t('timeline.subtitle')}
         </p>
       </div>
 
@@ -553,7 +555,7 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
               : 'bg-gray-50 text-nuraTextSecondary hover:text-nuraText hover:bg-gray-100'
           }`}
         >
-          All Events (Full Journey)
+          {t('timeline.all')}
         </button>
         {timelineGroups.map((group) => (
           <button
@@ -574,11 +576,11 @@ export const HealthTimelinePage: React.FC<HealthTimelinePageProps> = ({
       <div className="space-y-10">
         {isLoading ? (
           <div className="bg-white rounded-[1.75rem] p-10 text-center border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
-            <p className="text-sm font-medium text-nuraTextSecondary">Loading health events...</p>
+            <p className="text-sm font-medium text-nuraTextSecondary">{t('timeline.loading')}</p>
           </div>
         ) : visibleGroups.length === 0 ? (
           <div className="bg-white rounded-[1.75rem] p-10 text-center border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
-            <p className="text-sm font-medium text-nuraTextSecondary">No health events recorded yet.</p>
+            <p className="text-sm font-medium text-nuraTextSecondary">{t('timeline.empty')}</p>
           </div>
         ) : (
           visibleGroups.map((group, groupIndex) => (

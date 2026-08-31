@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Send, CheckCircle2, MessageSquare, Lightbulb, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 interface ConsultationQuestion {
   id: string;
@@ -64,6 +65,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
   symptomEntryId,
   userId,
 }) => {
+  const { t } = useTranslation();
   const [customQuestion, setCustomQuestion] = useState('');
   const [askedQuestions, setAskedQuestions] = useState<ConsultationQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -101,7 +103,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
         if (!isMounted) return;
         if (error) {
           console.error('Failed to determine consultation question preparation mode:', error);
-          setModeError('Unable to determine the appointment context. Please try again later.');
+          setModeError(t('questionsPage.modeError'));
           return;
         }
 
@@ -114,7 +116,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       } catch (error) {
         if (!isMounted) return;
         console.error('Unexpected error determining consultation question preparation mode:', error);
-        setModeError('Unable to determine the appointment context. Please try again later.');
+        setModeError(t('questionsPage.modeError'));
       } finally {
         if (isMounted) setIsDeterminingMode(false);
       }
@@ -151,7 +153,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
         if (!isMounted) return;
         if (error) {
           console.error('Failed to load consultation questions:', error);
-          setErrorMessage('Unable to load your prepared questions.');
+          setErrorMessage(t('questionsPage.loadError'));
           return;
         }
 
@@ -159,7 +161,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       } catch (error) {
         if (!isMounted) return;
         console.error('Unexpected error loading consultation questions:', error);
-        setErrorMessage('Unable to load your prepared questions.');
+        setErrorMessage(t('questionsPage.loadError'));
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -191,7 +193,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
         if (!isMounted) return;
         if (symptomError) {
           console.error('Failed to load symptom context for question suggestions:', symptomError);
-          setSuggestionError("Suggestions couldn't be generated right now.");
+          setSuggestionError(t('questionsPage.suggestError'));
           return;
         }
 
@@ -370,7 +372,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
         if (!isMounted) return;
         if (error) {
           console.error('Failed to generate consultation question suggestions:', error);
-          setSuggestionError("Suggestions couldn't be generated right now.");
+          setSuggestionError(t('questionsPage.suggestError'));
           return;
         }
 
@@ -383,7 +385,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
 
         if (questions.length === 0) {
           console.error('Consultation question function returned an invalid response shape.');
-          setSuggestionError("Suggestions couldn't be generated right now.");
+          setSuggestionError(t('questionsPage.suggestError'));
           return;
         }
 
@@ -391,7 +393,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       } catch (error) {
         if (!isMounted) return;
         console.error('Unexpected error generating consultation question suggestions:', error);
-        setSuggestionError("Suggestions couldn't be generated right now.");
+        setSuggestionError(t('questionsPage.suggestError'));
       } finally {
         if (isMounted) setIsGeneratingSuggestions(false);
       }
@@ -406,17 +408,17 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
   const handleAddQuestion = async () => {
     if (isSaving) return;
     if (!appointmentMode) {
-      setErrorMessage('Appointment context is not available yet.');
+      setErrorMessage(t('questionsPage.contextError'));
       return;
     }
 
     const trimmedQuestion = customQuestion.trim();
     if (!trimmedQuestion) {
-      setErrorMessage('Enter a question before adding it.');
+      setErrorMessage(t('questionsPage.emptyError'));
       return;
     }
     if (!userId) {
-      setErrorMessage('You must be signed in to add a question.');
+      setErrorMessage(t('questionsPage.authAddError'));
       return;
     }
 
@@ -440,7 +442,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
 
       if (error) {
         console.error('Failed to insert consultation question:', error);
-        setErrorMessage('Unable to add your question. Please try again.');
+        setErrorMessage(t('questionsPage.addError'));
         return;
       }
 
@@ -448,7 +450,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       setCustomQuestion('');
     } catch (error) {
       console.error('Unexpected error inserting consultation question:', error);
-      setErrorMessage('Unable to add your question. Please try again.');
+      setErrorMessage(t('questionsPage.addError'));
     } finally {
       setIsSaving(false);
     }
@@ -457,7 +459,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
   const handleDeleteQuestion = async (id: string) => {
     if (deletingQuestionId) return;
     if (!userId) {
-      setErrorMessage('You must be signed in to delete a question.');
+      setErrorMessage(t('questionsPage.authDeleteError'));
       return;
     }
 
@@ -473,14 +475,14 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
 
       if (error) {
         console.error('Failed to delete consultation question:', error);
-        setErrorMessage('Unable to delete the question. Please try again.');
+        setErrorMessage(t('questionsPage.deleteError'));
         return;
       }
 
       setAskedQuestions((questions) => questions.filter((question) => question.id !== id));
     } catch (error) {
       console.error('Unexpected error deleting consultation question:', error);
-      setErrorMessage('Unable to delete the question. Please try again.');
+      setErrorMessage(t('questionsPage.deleteError'));
     } finally {
       setDeletingQuestionId(null);
     }
@@ -489,7 +491,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
   const handleAddSuggestion = async (suggestion: string) => {
     if (addingSuggestion || isSaving) return;
     if (!appointmentMode) {
-      setErrorMessage('Appointment context is not available yet.');
+      setErrorMessage(t('questionsPage.contextError'));
       return;
     }
 
@@ -516,7 +518,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
 
       if (error) {
         console.error('Failed to insert AI consultation question:', error);
-        setErrorMessage('Unable to add the suggested question. Please try again.');
+        setErrorMessage(t('questionsPage.suggestAddError'));
         return;
       }
 
@@ -524,7 +526,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       setSuggestedQuestions((questions) => questions.filter((question) => question !== suggestion));
     } catch (error) {
       console.error('Unexpected error inserting AI consultation question:', error);
-      setErrorMessage('Unable to add the suggested question. Please try again.');
+      setErrorMessage(t('questionsPage.suggestAddError'));
     } finally {
       setAddingSuggestion(null);
     }
@@ -552,7 +554,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
             className="inline-flex items-center gap-2 text-xs font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Dashboard</span>
+            <span>{t('common.backDashboard')}</span>
           </button>
         </div>
       )}
@@ -560,21 +562,21 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       {/* HERO SECTION */}
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/80 text-primary text-xs font-semibold tracking-wider uppercase">
-          QUESTIONS BEFORE APPOINTMENT
+          {t('questionsPage.eyebrow')}
         </div>
         <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight">
-          Questions Before Appointment
+          {t('questionsPage.title')}
         </h1>
         <p className="font-sans text-base sm:text-lg text-nuraTextSecondary max-w-2xl leading-relaxed font-medium">
-          Prepare thoughtful questions to ask your doctor during your next consultation to get the most out of your appointment.
+          {t('questionsPage.subtitle')}
         </p>
         {appointmentMode === 'next-appointment' && (
           <div className="pt-2 space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-              Preparing for your next appointment
+              {t('questionsPage.next')}
             </p>
             <p className="text-sm text-nuraTextSecondary">
-              Suggestions use your previous consultation and linked health records for this episode.
+              {t('questionsPage.nextHelp')}
             </p>
           </div>
         )}
@@ -582,7 +584,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
 
       {isDeterminingMode ? (
         <div className="bg-white rounded-[1.75rem] p-10 text-center border border-gray-100 text-nuraTextSecondary text-sm" aria-busy="true">
-          Loading appointment context...
+          {t('questionsPage.loadingContext')}
         </div>
       ) : modeError ? (
         <div className="bg-white rounded-[1.75rem] p-8 border border-red-100 text-sm font-medium text-red-600" role="alert">
@@ -593,7 +595,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       {/* ADD CUSTOM QUESTION INPUT */}
       <div className="bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-4">
         <label className="block font-heading font-bold text-base text-nuraText">
-          Add a Custom Question
+          {t('questionsPage.custom')}
         </label>
         <div className="flex gap-3">
           <input
@@ -604,7 +606,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
               if (e.key === 'Enter') void handleAddQuestion();
             }}
             disabled={isSaving}
-            placeholder="Type your question for the doctor..."
+            placeholder={t('questionsPage.placeholder')}
             className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm text-nuraText placeholder:text-nuraTextSecondary/50 focus:outline-none focus:border-primary transition-colors"
           />
           <button
@@ -612,7 +614,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
             disabled={isSaving}
             className="px-5 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-blue-600 transition-colors flex items-center gap-2 cursor-pointer shrink-0"
           >
-            <span>{isSaving ? 'Adding...' : 'Add'}</span>
+            <span>{isSaving ? t('questionsPage.adding') : t('questionsPage.add')}</span>
             <Send className="w-4 h-4" />
           </button>
         </div>
@@ -626,13 +628,13 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="font-heading font-extrabold text-xl text-nuraText tracking-tight flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-primary" />
-            <span>My Prepared Questions ({askedQuestions.length})</span>
+            <span>{t('questionsPage.mine', { count: askedQuestions.length })}</span>
           </h2>
         </div>
 
         {isLoading ? (
           <div className="bg-white rounded-[1.75rem] p-10 text-center border border-gray-100 text-nuraTextSecondary text-sm" aria-busy="true">
-            Loading prepared questions...
+            {t('questionsPage.loading')}
           </div>
         ) : askedQuestions.length > 0 ? (
           <div className="space-y-3">
@@ -650,7 +652,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
                   onClick={() => void handleDeleteQuestion(preparedQuestion.id)}
                   disabled={deletingQuestionId !== null}
                   className="p-1.5 rounded-lg text-nuraTextSecondary/60 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                  aria-label="Delete question"
+                  aria-label={t('questionsPage.delete')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -659,7 +661,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
           </div>
         ) : (
           <div className="bg-white rounded-[1.75rem] p-10 text-center border border-gray-100 text-nuraTextSecondary text-sm">
-            No questions added yet.
+            {t('questionsPage.empty')}
           </div>
         )}
       </div>
@@ -668,11 +670,11 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
       <div className="space-y-4 pt-2">
         <h2 className="font-heading font-extrabold text-xl text-nuraText tracking-tight flex items-center gap-2">
           <Lightbulb className="w-5 h-5 text-amber-500" />
-          <span>Suggested Questions</span>
+          <span>{t('questionsPage.suggested')}</span>
         </h2>
         {isGeneratingSuggestions ? (
           <div className="bg-gray-50/80 rounded-[1.25rem] p-5 border border-gray-100 text-sm text-nuraTextSecondary" aria-busy="true">
-            Preparing personalized questions...
+            {t('questionsPage.generating')}
           </div>
         ) : suggestionError ? (
           <div className="bg-gray-50/80 rounded-[1.25rem] p-5 border border-gray-100 space-y-3">
@@ -682,7 +684,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
               onClick={() => setSuggestionAttempt((attempt) => attempt + 1)}
               className="text-xs font-semibold text-primary hover:text-blue-600 transition-colors"
             >
-              Try Again
+              {t('common.tryAgain')}
             </button>
           </div>
         ) : visibleSuggestedQuestions.length > 0 ? (
@@ -700,14 +702,14 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({
                   {suggestion}
                 </span>
                 <span className="text-xs font-semibold text-primary shrink-0">
-                  {addingSuggestion === suggestion ? 'Adding...' : '+ Add'}
+                  {addingSuggestion === suggestion ? t('questionsPage.adding') : `+ ${t('questionsPage.add')}`}
                 </span>
               </motion.button>
             ))}
           </div>
         ) : (
           <div className="bg-gray-50/80 rounded-[1.25rem] p-5 border border-gray-100 text-sm text-nuraTextSecondary">
-            No new suggestions available.
+            {t('questionsPage.noneSuggested')}
           </div>
         )}
       </div>

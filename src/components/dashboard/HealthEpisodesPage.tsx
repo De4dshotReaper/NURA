@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { EpisodeStoryPage } from './EpisodeStoryPage';
+import { useTranslation } from 'react-i18next';
+import { isSupportedLanguage, languageLocale } from '../../i18n';
 
 interface HealthEpisodeRow {
   id: string;
@@ -58,8 +60,8 @@ interface HealthEpisodesPageProps {
   onStartNewEpisode: () => void;
 }
 
-const formatLocalDate = (timestamp: string): string =>
-  new Date(timestamp).toLocaleDateString(undefined, {
+const formatLocalDate = (timestamp: string, locale: string): string =>
+  new Date(timestamp).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -76,6 +78,8 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
   onBackToDashboard,
   onStartNewEpisode,
 }) => {
+  const { t, i18n } = useTranslation();
+  const locale = languageLocale[isSupportedLanguage(i18n.language) ? i18n.language : 'en'];
   const [episodes, setEpisodes] = useState<EpisodeDisplay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -97,7 +101,7 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
         if (!isMounted) return;
         if (episodeError) {
           console.error('Failed to load health episodes:', episodeError);
-          setErrorMessage('Nura couldn’t load your health episodes. Please try again.');
+          setErrorMessage(t('episodes.error'));
           return;
         }
 
@@ -121,7 +125,7 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
         if (!isMounted) return;
         if (symptomError) {
           console.error('Failed to load initial symptoms for health episodes:', symptomError);
-          setErrorMessage('Nura couldn’t load your health episode details. Please try again.');
+          setErrorMessage(t('episodes.detailsError'));
           return;
         }
 
@@ -225,7 +229,7 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
       } catch (error) {
         if (!isMounted) return;
         console.error('Unexpected error loading health episodes:', error);
-        setErrorMessage('Nura couldn’t load your health episodes. Please try again.');
+        setErrorMessage(t('episodes.error'));
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -243,17 +247,17 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
     <div className="max-w-4xl mr-auto space-y-8">
       <button type="button" onClick={onBackToDashboard} className="inline-flex items-center gap-2 text-sm font-semibold text-nuraTextSecondary hover:text-primary transition-colors group">
         <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-        Back to Dashboard
+        {t('common.backDashboard')}
       </button>
       <header className="space-y-3">
-        <div className="inline-flex rounded-full bg-blue-50/80 px-3 py-1 text-xs font-semibold tracking-wider text-primary">HEALTH EPISODES</div>
-        <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-nuraText">Health Episodes</h1>
-        <p className="text-base sm:text-lg text-nuraTextSecondary">Review your current and past health episodes.</p>
+        <div className="inline-flex rounded-full bg-blue-50/80 px-3 py-1 text-xs font-semibold tracking-wider text-primary">{t('episodes.eyebrow')}</div>
+        <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-nuraText">{t('episodes.title')}</h1>
+        <p className="text-base sm:text-lg text-nuraTextSecondary">{t('episodes.subtitle')}</p>
       </header>
 
       {isLoading ? (
         <div className="rounded-[1.75rem] border border-gray-100 bg-white p-10 text-center shadow-sm" aria-busy="true">
-          <p className="text-sm font-medium text-nuraTextSecondary">Loading health episodes...</p>
+          <p className="text-sm font-medium text-nuraTextSecondary">{t('episodes.loading')}</p>
         </div>
       ) : errorMessage ? (
         <div className="rounded-[1.75rem] border border-red-100 bg-white p-8 text-center shadow-sm" role="alert">
@@ -262,11 +266,11 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
       ) : episodes.length === 0 ? (
         <div className="rounded-[1.75rem] border border-gray-100 bg-white p-8 sm:p-10 text-center shadow-sm space-y-5">
           <div className="space-y-2">
-            <h2 className="font-heading text-xl font-bold text-nuraText">No health episodes yet</h2>
-            <p className="text-sm text-nuraTextSecondary">Start a new health episode to begin building your health history.</p>
+            <h2 className="font-heading text-xl font-bold text-nuraText">{t('episodes.empty')}</h2>
+            <p className="text-sm text-nuraTextSecondary">{t('episodes.emptyHelp')}</p>
           </div>
           <button type="button" onClick={onStartNewEpisode} className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
-            Start New Episode
+            {t('dashboard.startEpisode')}
           </button>
         </div>
       ) : (
@@ -288,8 +292,8 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
                     </span>
                     <p className="text-xs font-medium text-nuraTextSecondary">
                       {episode.status === 'completed' && episode.completed_at
-                        ? `${formatLocalDate(episode.started_at)} — ${formatLocalDate(episode.completed_at)}`
-                        : `Started ${formatLocalDate(episode.started_at)}`}
+                        ? `${formatLocalDate(episode.started_at, locale)} — ${formatLocalDate(episode.completed_at, locale)}`
+                        : t('episodes.started', { date: formatLocalDate(episode.started_at, locale) })}
                     </p>
                   </div>
                   <p className="font-heading text-lg sm:text-xl font-bold leading-relaxed text-nuraText whitespace-pre-line">
@@ -300,7 +304,7 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
                   )}
                   <div className="border-t border-gray-100 pt-5 flex justify-end">
                     <button type="button" onClick={() => onSelectEpisode(episode.id)} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-blue-600 transition-colors group">
-                      View Episode
+                      {t('episodes.view')}
                       <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </div>

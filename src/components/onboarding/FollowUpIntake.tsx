@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '../common/Button';
 import { Activity, Pill, HelpCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface FollowUpIntakeValues {
   progress: string;
@@ -24,6 +25,7 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
   isSaving = false,
   errorMessage = null,
 }) => {
+  const { t } = useTranslation();
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<string>('Slightly Better');
   const [symptoms, setSymptoms] = useState('');
@@ -41,17 +43,17 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
   }, []);
 
   const progressOptions = [
-    'Much Better',
-    'Slightly Better',
-    'No Change',
-    'Slightly Worse',
-    'Much Worse'
+    { value: 'Much Better', labelKey: 'workflow.muchBetter' },
+    { value: 'Slightly Better', labelKey: 'workflow.slightlyBetter' },
+    { value: 'No Change', labelKey: 'workflow.noChange' },
+    { value: 'Slightly Worse', labelKey: 'workflow.slightlyWorse' },
+    { value: 'Much Worse', labelKey: 'workflow.muchWorse' },
   ];
 
   const complianceOptions = [
-    'Yes, as prescribed',
-    'Sometimes missed doses',
-    'Stopped taking them'
+    { value: 'Yes, as prescribed', labelKey: 'workflow.asPrescribed' },
+    { value: 'Sometimes missed doses', labelKey: 'workflow.missedDoses' },
+    { value: 'Stopped taking them', labelKey: 'workflow.stoppedTaking' },
   ];
 
   return (
@@ -73,17 +75,17 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
             </span>
           </div>
           <p className="text-xs font-semibold text-nuraTextSecondary tracking-[0.3em] uppercase">
-            REVIEW CONSULTATION.
+            {t('workflow.reviewConsultation')}
           </p>
         </div>
 
         {/* Hero Section */}
         <div className="text-center space-y-3">
           <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight">
-            Follow-up Visit
+            {t('workflow.followUp')}
           </h1>
           <p className="font-sans text-base sm:text-lg text-nuraTextSecondary font-medium max-w-lg mx-auto">
-            Tell us how things have changed since your last appointment.
+            {t('workflow.followUpHelp')}
           </p>
         </div>
 
@@ -93,26 +95,26 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
           {/* Section 1 — Recovery Progress */}
           <div className="space-y-3">
             <label className="block text-xs font-bold uppercase tracking-wider text-nuraTextSecondary">
-              1. Recovery Progress
+              {t('workflow.recoveryProgress')}
             </label>
             <p className="text-sm text-nuraText font-medium">
-              How are you feeling overall compared to your last visit?
+              {t('workflow.recoveryHelp')}
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
               {progressOptions.map((opt) => {
-                const isSelected = progress === opt;
+                const isSelected = progress === opt.value;
                 return (
                   <button
-                    key={opt}
+                    key={opt.value}
                     type="button"
-                    onClick={() => setProgress(opt)}
+                    onClick={() => setProgress(opt.value)}
                     className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-primary text-white border-primary shadow-md shadow-blue-500/20'
                         : 'bg-gray-50/80 text-nuraTextSecondary border-gray-200/80 hover:border-primary/40 hover:text-nuraText'
                     }`}
                   >
-                    {opt}
+                    {t(opt.labelKey)}
                   </button>
                 );
               })}
@@ -122,13 +124,13 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
           {/* Section 2 — Current Symptoms */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
             <label className="block text-xs font-bold uppercase tracking-wider text-nuraTextSecondary">
-              2. Current Symptoms
+              {t('workflow.currentSymptoms')}
             </label>
             <textarea
               rows={4}
               value={symptoms}
               onChange={(e) => setSymptoms(e.target.value)}
-              placeholder="Describe how you're feeling now..."
+              placeholder={t('workflow.currentSymptomsPlaceholder')}
               className="w-full p-4 bg-gray-50/50 border border-gray-200/80 rounded-xl font-sans text-nuraText placeholder:text-nuraTextSecondary/50 focus:outline-none focus:border-primary focus:bg-white transition-all resize-none text-sm sm:text-base leading-relaxed"
             />
           </div>
@@ -136,25 +138,25 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
           {/* Section 3 — Medicines */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
             <label className="block text-xs font-bold uppercase tracking-wider text-nuraTextSecondary">
-              3. Medicines Compliance
+              {t('workflow.medicineCompliance')}
             </label>
             <p className="text-sm text-nuraText font-medium">
-              Are you taking the prescribed medicines?
+              {t('workflow.medicineComplianceHelp')}
             </p>
             <div className="space-y-2 pt-1">
               {complianceOptions.map((opt) => {
-                const isSelected = medCompliance === opt;
+                const isSelected = medCompliance === opt.value;
                 return (
                   <div
-                    key={opt}
-                    onClick={() => setMedCompliance(opt)}
+                    key={opt.value}
+                    onClick={() => setMedCompliance(opt.value)}
                     className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                       isSelected
                         ? 'border-primary bg-primary/[0.03] text-primary font-semibold shadow-xs'
                         : 'border-gray-200/80 bg-gray-50/40 text-nuraText hover:border-primary/40'
                     }`}
                   >
-                    <span className="text-sm">{opt}</span>
+                    <span className="text-sm">{t(opt.labelKey)}</span>
                     <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
                       isSelected ? 'border-primary bg-primary text-white' : 'border-gray-300'
                     }`}>
@@ -176,7 +178,7 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
                   rows={3}
                   value={medReason}
                   onChange={(e) => setMedReason(e.target.value)}
-                  placeholder="Tell us why."
+                  placeholder={t('workflow.medicineReason')}
                   className="w-full p-4 bg-gray-50/50 border border-gray-200/80 rounded-xl font-sans text-nuraText placeholder:text-nuraTextSecondary/50 focus:outline-none focus:border-primary focus:bg-white transition-all resize-none text-sm leading-relaxed"
                 />
               </motion.div>
@@ -186,10 +188,10 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
           {/* Section 4 — Side Effects */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
             <label className="block text-xs font-bold uppercase tracking-wider text-nuraTextSecondary">
-              4. Side Effects
+              {t('workflow.sideEffects')}
             </label>
             <p className="text-sm text-nuraText font-medium">
-              Have you noticed any side effects?
+              {t('workflow.sideEffectsHelp')}
             </p>
             <div className="flex items-center gap-4 pt-1">
               <button
@@ -201,7 +203,7 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
                     : 'bg-gray-50 text-nuraTextSecondary border-gray-200 hover:border-primary/40'
                 }`}
               >
-                Yes
+                {t('common.yes')}
               </button>
               <button
                 type="button"
@@ -212,7 +214,7 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
                     : 'bg-gray-50 text-nuraTextSecondary border-gray-200 hover:border-primary/40'
                 }`}
               >
-                No
+                {t('common.no')}
               </button>
             </div>
 
@@ -227,7 +229,7 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
                   rows={3}
                   value={sideEffectsText}
                   onChange={(e) => setSideEffectsText(e.target.value)}
-                  placeholder="Describe any side effects experienced..."
+                  placeholder={t('workflow.sideEffectsPlaceholder')}
                   className="w-full p-4 bg-gray-50/50 border border-gray-200/80 rounded-xl font-sans text-nuraText placeholder:text-nuraTextSecondary/50 focus:outline-none focus:border-primary focus:bg-white transition-all resize-none text-sm leading-relaxed"
                 />
               </motion.div>
@@ -237,13 +239,13 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
           {/* Section 5 — New Questions */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
             <label className="block text-xs font-bold uppercase tracking-wider text-nuraTextSecondary">
-              5. New Questions
+              {t('workflow.newQuestions')}
             </label>
             <textarea
               rows={4}
               value={questions}
               onChange={(e) => setQuestions(e.target.value)}
-              placeholder="Anything you'd like to ask your doctor during this follow-up?"
+              placeholder={t('workflow.newQuestionsPlaceholder')}
               className="w-full p-4 bg-gray-50/50 border border-gray-200/80 rounded-xl font-sans text-nuraText placeholder:text-nuraTextSecondary/50 focus:outline-none focus:border-primary focus:bg-white transition-all resize-none text-sm sm:text-base leading-relaxed"
             />
           </div>
@@ -272,7 +274,7 @@ export const FollowUpIntake: React.FC<FollowUpIntakeProps> = ({
             disabled={isSaving}
             className="w-full sm:w-auto min-w-[220px] py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
-            {isSaving ? 'Saving...' : 'Continue →'}
+            {isSaving ? t('common.saving') : t('common.continue')}
           </Button>
         </div>
 

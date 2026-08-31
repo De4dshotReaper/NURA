@@ -4,6 +4,7 @@ import { Pill, FileText, CheckCircle2, Clock, Calendar, Sun, Shield, ArrowLeft, 
 import { supabase } from '../../lib/supabase';
 import { PrescriptionSummaryPage } from './PrescriptionSummaryPage';
 import type { ExtractedMedicine } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface PrescriptionItem {
   id: string;
@@ -56,6 +57,7 @@ interface MedicineInformationPageProps {
 export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = ({
   onBackToDashboard
 }) => {
+  const { t } = useTranslation();
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -94,7 +96,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         }
 
         if (error) {
-          setErrorMessage('Could not load your saved prescription history.');
+          setErrorMessage(t('documentErrors.history'));
           return;
         }
 
@@ -108,7 +110,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         });
       } catch {
         if (isMounted) {
-          setErrorMessage('Could not load your saved prescription history.');
+          setErrorMessage(t('documentErrors.history'));
         }
       }
     };
@@ -180,14 +182,14 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         setProcessedPrescriptionId(null);
       }
     } catch {
-      setErrorMessage('Could not delete this prescription. Please try again.');
+      setErrorMessage(t('documentErrors.deletePrescription'));
     }
   };
 
   const handleFileSelect = async (file: File) => {
     const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
     if (file.size > MAX_SIZE) {
-      setErrorMessage('File size exceeds the 10 MB limit. Please select a smaller file.');
+      setErrorMessage(t('documentErrors.size'));
       setShowSuccess(false);
       return;
     }
@@ -210,7 +212,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
     }
 
     if (!detectedType) {
-      setErrorMessage('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
+      setErrorMessage(t('documentErrors.typePrescription'));
       setShowSuccess(false);
       return;
     }
@@ -240,7 +242,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
     }, 2000);
 
     if (detectedType === 'PDF') {
-      setPdfMessage('PDF text extraction has not been implemented yet.');
+      setPdfMessage(t('documentErrors.pdf'));
     } else {
       setOcrLoading(true);
       try {
@@ -252,7 +254,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         });
 
         if (error) {
-          throw new Error(error.message || 'Failed to analyze prescription image. Please try again.');
+          throw new Error(error.message || t('labels.analyzePrescription'));
         }
 
         if (data && data.error) {
@@ -261,7 +263,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
         const prescriptionData = data as PrescriptionResponse;
         if (!prescriptionData || !Array.isArray(prescriptionData.medicines)) {
-          throw new Error('We could not read medicine details from this prescription. Please try another image.');
+          throw new Error(t('labels.readPrescription'));
         }
 
         setExtractedData(prescriptionData);
@@ -324,12 +326,12 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
                   setProcessedPrescriptionId(savedPrescription.id);
                 } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
-                  setErrorMessage('Prescription processed, but could not be saved to your history.');
+                  setErrorMessage(t('documentErrors.savePrescription'));
                 }
               }
             } catch {
               if (processedPrescriptionIdRef.current === newRx.id) {
-                setErrorMessage('General medicine information is temporarily unavailable. Your prescription details are still available.');
+                setErrorMessage(t('documentErrors.medicineUnavailable'));
 
                 const savedPrescription = await persistProcessedPrescription({
                   fileName: file.name,
@@ -341,7 +343,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
                   setProcessedPrescriptionId(savedPrescription.id);
                 } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
-                  setErrorMessage('General medicine information is temporarily unavailable. Your prescription details are still available. Prescription processed, but could not be saved to your history.');
+                  setErrorMessage(`${t('documentErrors.medicineUnavailable')} ${t('documentErrors.savePrescription')}`);
                 }
               }
             } finally {
@@ -361,11 +363,11 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
           if (savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
             setProcessedPrescriptionId(savedPrescription.id);
           } else if (!savedPrescription && processedPrescriptionIdRef.current === newRx.id) {
-            setErrorMessage('Prescription processed, but could not be saved to your history.');
+            setErrorMessage(t('documentErrors.savePrescription'));
           }
         }
       } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to analyze prescription image. Please try again.');
+        setErrorMessage(err instanceof Error ? err.message : t('labels.analyzePrescription'));
       } finally {
         setOcrLoading(false);
       }
@@ -412,7 +414,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
             className="inline-flex items-center gap-2 text-xs font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Dashboard</span>
+            <span>{t('common.backDashboard')}</span>
           </button>
         </div>
       )}
@@ -420,13 +422,13 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
       {/* HERO SECTION */}
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/80 text-primary text-xs font-semibold tracking-wider uppercase">
-          MEDICINE INFORMATION
+          {t('documents.medicineInfo')}
         </div>
         <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight">
-          Understand your medicines.
+          {t('documents.understandMedicines')}
         </h1>
         <p className="font-sans text-base sm:text-lg text-nuraTextSecondary max-w-2xl leading-relaxed font-medium">
-          Upload your prescription and we'll organize every prescribed medicine into a simple, easy-to-read explanation.
+          {t('documents.medicineHelp')}
         </p>
       </div>
 
@@ -460,7 +462,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
           className="bg-emerald-50 border border-emerald-200/80 p-4 rounded-2xl flex items-center gap-3 text-emerald-800"
         >
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span className="text-sm font-semibold">Prescription uploaded successfully. Summary updated below.</span>
+          <span className="text-sm font-semibold">{t('documents.uploadSuccess')}</span>
         </motion.div>
       )}
 
@@ -489,17 +491,17 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
         <div className="space-y-2 max-w-md">
           <h3 className="font-heading font-bold text-lg sm:text-xl text-nuraText">
-            Upload Prescription
+            {t('documents.uploadPrescription')}
           </h3>
           <p className="font-sans text-sm text-nuraTextSecondary">
-            Drag & drop a prescription or click to browse.
+            {t('documents.prescriptionDrop')}
           </p>
         </div>
 
         <div className="flex items-center gap-3 mt-6 text-xs font-semibold text-nuraTextSecondary/70 uppercase tracking-wider">
           <span>JPG • PNG • PDF</span>
           <span>•</span>
-          <span>Maximum size: 10 MB</span>
+          <span>{t('documents.maxSize')}</span>
         </div>
       </motion.div>
 
@@ -512,7 +514,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
           className="bg-blue-50 border border-blue-200/80 p-4 rounded-2xl flex items-center gap-3 text-blue-800"
         >
           <Clock className="w-5 h-5 text-blue-600 animate-spin shrink-0" />
-          <span className="text-sm font-semibold">Reading prescription...</span>
+          <span className="text-sm font-semibold">{t('documents.readingPrescription')}</span>
         </motion.div>
       )}
 
@@ -541,10 +543,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-              Prescription Summary
+              {t('documents.prescriptionSummary')}
             </h2>
             <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary">
-              A quick overview of the medicines detected from your uploaded prescription.
+              {t('documents.summaryHelp')}
             </p>
           </div>
           <button
@@ -567,7 +569,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 </div>
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                    Medicines Detected
+                    {t('documents.medicinesDetected')}
                   </div>
                   <div className="font-heading font-bold text-lg sm:text-xl text-nuraText">
                     {extractedData ? extractedData.medicines.length : 3} Medicines
@@ -582,7 +584,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 </div>
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                    Estimated Duration
+                    {t('documents.estimatedDuration')}
                   </div>
                   <div className="font-heading font-bold text-lg sm:text-xl text-nuraText">
                     5 Days
@@ -597,7 +599,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 </div>
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                    Daily Schedule
+                    {t('documents.dailySchedule')}
                   </div>
                   <div className="font-heading font-bold text-sm sm:text-base text-nuraText truncate">
                     Morning • Afternoon • Night
@@ -612,7 +614,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 </div>
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                    Uploaded
+                    {t('documents.uploaded')}
                   </div>
                   <div className="font-heading font-bold text-sm sm:text-base text-nuraText truncate">
                     Today • 2:14 PM
@@ -624,13 +626,13 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
             {/* Medicine List Preview (Chips) */}
             <div className="space-y-3">
               <div className="text-xs font-semibold text-nuraTextSecondary uppercase tracking-wider">
-                Detected Medicines
+                {t('documents.detectedMedicines')}
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 {extractedData ? (
                   extractedData.medicines.map((med, idx) => (
                     <span key={idx} className="px-3.5 py-1.5 rounded-xl border border-gray-200/80 bg-white text-xs font-semibold text-nuraText shadow-2xs">
-                      {med.name || 'Not specified on prescription'} {med.dosage ? `(${med.dosage})` : ''}
+                      {med.name || t('documents.notSpecified')} {med.dosage ? `(${med.dosage})` : ''}
                     </span>
                   ))
                 ) : (
@@ -653,7 +655,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
             <div className="pt-2 flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Prescription processed successfully
+                {t('documents.processed')}
               </span>
 
               <button
@@ -671,7 +673,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 }}
                 className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
-                Open Medicine Details →
+                {t('documents.openMedicine')} →
               </button>
             </div>
           </div>
@@ -683,10 +685,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
             </div>
             <div className="space-y-1.5 max-w-sm mx-auto">
               <h3 className="font-heading font-bold text-base text-nuraText">
-                No prescription uploaded yet.
+                {t('documents.noPrescription')}
               </h3>
               <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-                Upload a prescription to automatically organize your medicines into an easy-to-read summary.
+                {t('documents.noPrescriptionHelp')}
               </p>
             </div>
           </div>
@@ -698,10 +700,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-              Recent Prescriptions
+              {t('documents.recentPrescriptions')}
             </h2>
             <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary mt-0.5">
-              Your uploaded prescription history and simple breakdowns
+              {t('documents.recentHelp')}
             </p>
           </div>
         </div>
@@ -731,11 +733,11 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 </div>
 
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-                  <span className="transform group-hover:translate-x-1 transition-transform">Open Medicine Details →</span>
+                  <span className="transform group-hover:translate-x-1 transition-transform">{t('documents.openMedicine')} →</span>
                   <button
                     type="button"
                     aria-label={`Delete ${rx.title}`}
-                    title="Delete prescription"
+                    title={t('documents.deletePrescription')}
                     onClick={(event) => {
                       event.stopPropagation();
                       void handleDeletePrescription(rx.id);
@@ -755,10 +757,10 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
             </div>
             <div className="space-y-1 max-w-xs mx-auto">
               <h3 className="font-heading font-bold text-base text-nuraText">
-                No prescriptions uploaded yet
+                {t('documents.noPrescriptions')}
               </h3>
               <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-                Your uploaded prescriptions will appear here for future reference.
+                {t('documents.noPrescriptionsHelp')}
               </p>
             </div>
           </div>

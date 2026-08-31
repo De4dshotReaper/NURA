@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
+import { useTranslation } from 'react-i18next';
 
 interface SymptomEntryProps {
   onContinue?: (symptoms: string) => void;
 }
 
 export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
+  const { t } = useTranslation();
   const [loaded, setLoaded] = useState(false);
   const [value, setValue] = useState('');
   const [recordedAt] = useState(() => new Date());
@@ -52,7 +54,7 @@ export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
               transform: loaded ? 'translateY(0)' : 'translateY(10px)',
             }}
           >
-            START WHEREVER FEELS NATURAL.
+            {t('symptomEntry.caption')}
           </p>
         </div>
 
@@ -65,10 +67,10 @@ export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
           }}
         >
           <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight">
-            What are you experiencing today?
+            {t('workflow.symptomsTitle')}
           </h1>
           <p className="font-sans text-base sm:text-lg text-nuraTextSecondary font-medium">
-            We'll save this entry with today's date and time automatically.
+            {t('symptomEntry.autoSaveHelp')}
           </p>
         </div>
 
@@ -85,7 +87,7 @@ export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
               rows={7}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="Start wherever feels natural..."
+              placeholder={t('symptomEntry.placeholder')}
               className="w-full p-6 sm:p-8 bg-white border border-gray-200/80 rounded-[2rem] shadow-lg shadow-blue-500/5 font-sans text-nuraText placeholder:text-nuraTextSecondary/50 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all duration-300 resize-none text-base sm:text-lg leading-relaxed"
             />
           </div>
@@ -93,7 +95,7 @@ export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
           {/* Recorded Info */}
           <div className="flex flex-col items-start px-2 space-y-0.5">
             <span className="text-xs font-medium text-nuraTextSecondary/70 uppercase tracking-wider">
-              Recorded automatically
+              {t('symptomEntry.recordedAutomatically')}
             </span>
             <span className="text-sm font-semibold text-nuraTextSecondary">
               {formattedRecordedAt}
@@ -115,7 +117,7 @@ export const SymptomEntry: React.FC<SymptomEntryProps> = ({ onContinue }) => {
             onClick={() => onContinue && onContinue(value)}
             className="w-full sm:w-auto min-w-[200px] py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
-            Continue →
+            {t('common.continue')}
           </Button>
         </div>
 

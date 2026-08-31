@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ArrowRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface LandingNavbarProps {
   onStartJourney: () => void;
@@ -8,6 +9,7 @@ interface LandingNavbarProps {
 }
 
 export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, onSignIn, isAuthenticated = false }) => {
+  const { t } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -25,10 +27,10 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
   }, []);
 
   const navLinks = [
-    { name: 'Features', href: '#features' },
-    { name: 'How it Works', href: '#how-it-works' },
-    { name: 'Privacy', href: '#privacy' },
-    { name: 'FAQ', href: '#faq' },
+    { name: t('landing.features'), href: '#features' },
+    { name: t('landing.how'), href: '#how-it-works' },
+    { name: t('landing.privacy'), href: '#privacy' },
+    { name: t('landing.faq'), href: '#faq' },
   ];
 
   return (
@@ -80,13 +82,13 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
             }}
             className="px-4 py-2 text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors duration-300 rounded-xl cursor-pointer inline-flex items-center"
           >
-            {isAuthenticated ? 'Dashboard' : 'Sign In'}
+            {isAuthenticated ? t('nav.dashboard') : t('landing.signIn')}
           </a>
           <button
             onClick={onStartJourney}
             className="inline-flex items-center justify-center px-7 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-400 gap-1.5 cursor-pointer"
           >
-            Start Journey
+            {t('landing.startJourney')}
             <ArrowRight className="w-4 h-4 opacity-80" />
           </button>
         </div>
@@ -128,7 +130,7 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
               }}
               className="w-full py-2.5 text-center text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors"
             >
-              {isAuthenticated ? 'Dashboard' : 'Sign In'}
+              {isAuthenticated ? t('nav.dashboard') : t('landing.signIn')}
             </a>
             <button
               onClick={() => {
@@ -137,7 +139,7 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
               }}
               className="w-full text-center py-3.5 text-sm font-semibold text-white bg-primary rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 transition-all cursor-pointer"
             >
-              Start Journey
+              {t('landing.startJourney')}
             </button>
           </div>
         </div>

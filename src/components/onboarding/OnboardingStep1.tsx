@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingStep1Props {
   onComplete: (selectedOption: 'new-illness' | 'follow-up') => void;
 }
 
 export const OnboardingStep1: React.FC<OnboardingStep1Props> = ({ onComplete }) => {
-  const fullText = "How are you feeling today?";
+  const { t, i18n } = useTranslation();
+  const fullText = t('dashboard.feeling');
   const [displayedText, setDisplayedText] = useState("");
   const [isTypingComplete, setIsTypingComplete] = useState(false);
   const [cursorVisible, setCursorVisible] = useState(true);
@@ -15,6 +17,10 @@ export const OnboardingStep1: React.FC<OnboardingStep1Props> = ({ onComplete }) 
 
   // Typewriter effect
   useEffect(() => {
+    setDisplayedText('');
+    setIsTypingComplete(false);
+    setCursorVisible(true);
+    setShowCards(false);
     let currentIndex = 0;
     const typingInterval = setInterval(() => {
       if (currentIndex < fullText.length) {
@@ -38,7 +44,7 @@ export const OnboardingStep1: React.FC<OnboardingStep1Props> = ({ onComplete }) 
     }, 45); // Smooth typing speed
 
     return () => clearInterval(typingInterval);
-  }, []);
+  }, [fullText, i18n.language]);
 
   const handleCardClick = (option: 'new-illness' | 'follow-up') => {
     if (selectedCard) return; // Prevent multiple clicks
@@ -117,7 +123,7 @@ export const OnboardingStep1: React.FC<OnboardingStep1Props> = ({ onComplete }) 
               <Activity className="w-7 h-7" />
             </div>
             <h3 className="font-heading font-bold text-xl sm:text-2xl text-nuraText mb-2 group-hover:text-primary transition-colors duration-500 cubic-bezier(0.16, 1, 0.3, 1)">
-              New Illness
+              {t('workflow.newIllness')}
             </h3>
             <p className="font-sans text-nuraTextSecondary text-base sm:text-lg leading-relaxed">
               I'm preparing for a doctor visit.
@@ -144,7 +150,7 @@ export const OnboardingStep1: React.FC<OnboardingStep1Props> = ({ onComplete }) 
               <RotateCcw className="w-7 h-7" />
             </div>
             <h3 className="font-heading font-bold text-xl sm:text-2xl text-nuraText mb-2 group-hover:text-primary transition-colors duration-500 cubic-bezier(0.16, 1, 0.3, 1)">
-              Follow-up Visit
+              {t('workflow.followUp')}
             </h3>
             <p className="font-sans text-nuraTextSecondary text-base sm:text-lg leading-relaxed">
               I want to review my previous consultation.

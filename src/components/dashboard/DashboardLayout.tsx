@@ -22,6 +22,8 @@ import { AppointmentDetailsPage } from './AppointmentDetailsPage';
 import { SettingsPage } from './SettingsPage';
 import { supabase } from '../../lib/supabase';
 import type { User } from '@supabase/supabase-js';
+import { useTranslation } from 'react-i18next';
+import { isSupportedLanguage, languageLocale } from '../../i18n';
 
 interface NavItem {
   id: string;
@@ -109,38 +111,38 @@ const formatEventTime = (timestamp: string): string =>
   });
 
 const mainNavItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'new-illness', label: 'New Illness', icon: Stethoscope },
-  { id: 'follow-up', label: 'Follow-up Visit', icon: RotateCcw },
-  { id: 'health-episodes', label: 'Health Episodes', icon: List },
-  { id: 'health-timeline', label: 'Health Timeline', icon: Clock },
+  { id: 'dashboard', label: 'nav.dashboard', icon: LayoutDashboard },
+  { id: 'new-illness', label: 'nav.newIllness', icon: Stethoscope },
+  { id: 'follow-up', label: 'nav.followUp', icon: RotateCcw },
+  { id: 'health-episodes', label: 'nav.episodes', icon: List },
+  { id: 'health-timeline', label: 'nav.timeline', icon: Clock },
 ];
 
 const resourceNavItems: NavItem[] = [
-  { id: 'questions', label: 'Questions Before Appointment', icon: HelpCircle },
-  { id: 'medicines', label: 'Medicines', icon: Pill },
-  { id: 'lab-reports', label: 'Lab Reports', icon: FileText },
+  { id: 'questions', label: 'nav.questions', icon: HelpCircle },
+  { id: 'medicines', label: 'nav.medicines', icon: Pill },
+  { id: 'lab-reports', label: 'nav.labReports', icon: FileText },
 ];
 
 const settingsNavItems: NavItem[] = [
-  { id: 'settings', label: 'Settings', icon: SettingsIcon },
+  { id: 'settings', label: 'nav.settings', icon: SettingsIcon },
 ];
 
-const getGreeting = (): string => {
+const getGreetingKey = (): string => {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return 'dashboard.morning';
+  if (hour < 17) return 'dashboard.afternoon';
+  return 'dashboard.evening';
 };
 
 const getFirstName = (fullName?: string): string =>
   fullName?.trim().split(/\s+/)[0] ?? '';
 
-const getFormattedDate = (): string => {
+const getFormattedDate = (locale: string): string => {
   const today = new Date();
-  const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
+  const weekday = today.toLocaleDateString(locale, { weekday: 'long' });
   const day = today.getDate();
-  const month = today.toLocaleDateString('en-US', { month: 'long' });
+  const month = today.toLocaleDateString(locale, { month: 'long' });
   const year = today.getFullYear();
   return `${weekday}, ${day} ${month} ${year}`;
 };
@@ -182,6 +184,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onAuthenticatedUserUpdated,
   onSignedOut,
 }) => {
+  const { t, i18n } = useTranslation();
+  const selectedLanguage = isSupportedLanguage(i18n.language) ? i18n.language : 'en';
+  const locale = languageLocale[selectedLanguage];
   const [activeItem, setActiveItem] = useState<string>(initialActiveItem);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [selectedHealthEpisodeId, setSelectedHealthEpisodeId] = useState<string | null>(null);
@@ -197,7 +202,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [latestFollowUpError, setLatestFollowUpError] = useState<string | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<PreviewTimelineEvent[]>([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState<boolean>(true);
-  const greeting = getGreeting();
+  const greeting = t(getGreetingKey());
   const firstName = getFirstName(userFullName);
 
   useEffect(() => {
@@ -209,7 +214,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       if (!userId) {
         setCurrentEpisode(null);
-        setCurrentEpisodeError('Unable to load your current health episode.');
+        setCurrentEpisodeError(t('dashboard.episodeUnavailable'));
         setIsLoadingCurrentEpisode(false);
         return;
       }
@@ -229,7 +234,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         if (episodeError) {
           console.error('Failed to load current active health episode:', episodeError);
           setCurrentEpisode(null);
-          setCurrentEpisodeError('Unable to load your current health episode. Please try again.');
+          setCurrentEpisodeError(t('dashboard.episodeUnavailable'));
           return;
         }
 
@@ -253,7 +258,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             symptomEntryId: episode.initial_symptom_entry_id,
           });
           setCurrentEpisode(null);
-          setCurrentEpisodeError('Your current health episode details are unavailable. Please try again.');
+          setCurrentEpisodeError(t('dashboard.episodeUnavailable'));
           return;
         }
 
@@ -262,7 +267,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         if (!isMounted) return;
         console.error('Unexpected error loading current health episode:', error);
         setCurrentEpisode(null);
-        setCurrentEpisodeError('Unable to load your current health episode. Please try again.');
+        setCurrentEpisodeError(t('dashboard.episodeUnavailable'));
       } finally {
         if (isMounted) setIsLoadingCurrentEpisode(false);
       }
@@ -295,7 +300,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         if (error) {
           console.error('Failed to load latest follow-up for current health episode:', error);
           setLatestFollowUp(null);
-          setLatestFollowUpError('The latest follow-up for this episode is unavailable. Please try again.');
+          setLatestFollowUpError(t('labels.followUpUnavailable'));
         } else {
           setLatestFollowUp(data);
         }
@@ -303,7 +308,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         if (!isMounted) return;
         console.error('Unexpected error loading latest follow-up for current health episode:', error);
         setLatestFollowUp(null);
-        setLatestFollowUpError('The latest follow-up for this episode is unavailable. Please try again.');
+        setLatestFollowUpError(t('labels.followUpUnavailable'));
       }
     };
 
@@ -490,7 +495,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           episodeId: currentEpisode.id,
           reason: 'No matching episode was updated.',
         });
-        setCompleteEpisodeError('Nura couldn’t complete this episode. Please try again.');
+        setCompleteEpisodeError(t('labels.completeError'));
         return;
       }
 
@@ -498,7 +503,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       setEpisodeRefreshKey((key) => key + 1);
     } catch (error) {
       console.error('Unexpected error completing health episode:', error);
-      setCompleteEpisodeError('Nura couldn’t complete this episode. Please try again.');
+      setCompleteEpisodeError(t('labels.completeError'));
     } finally {
       setIsCompletingEpisode(false);
     }
@@ -536,7 +541,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               }`}
             >
               <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary' : 'text-nuraTextSecondary/70'}`} />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.label)}</span>
             </button>
           </li>
         );
@@ -558,7 +563,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </span>
           </div>
           <p className="text-xs font-medium text-nuraTextSecondary/80 tracking-wide pl-0.5">
-            Patient Companion
+            {t('nav.patientCompanion')}
           </p>
         </div>
 
@@ -572,7 +577,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {/* Resources Section */}
           <div>
             <div className="px-3 mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-nuraTextSecondary/60">
-              Resources
+              {t('nav.resources')}
             </div>
             {renderNavList(resourceNavItems)}
           </div>
@@ -580,7 +585,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {/* Settings Section */}
           <div>
             <div className="px-3 mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-nuraTextSecondary/60">
-              Settings
+              {t('nav.settings')}
             </div>
             {renderNavList(settingsNavItems)}
           </div>
@@ -720,7 +725,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               }}
               className="font-sans text-lg sm:text-xl text-nuraTextSecondary font-medium"
             >
-              Here’s where things stand with your health today.
+              {t('dashboard.subtitle')}
             </motion.p>
 
             {/* 3. Subtle Date */}
@@ -734,7 +739,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               }}
               className="font-sans text-xs sm:text-sm font-medium text-nuraTextSecondary/60 tracking-wide pt-1"
             >
-              {getFormattedDate()}
+              {getFormattedDate(locale)}
             </motion.p>
           </div>
 
@@ -752,14 +757,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-heading font-bold text-lg text-nuraText">
-                      Current Health Episode
+                      {t('dashboard.currentEpisode')}
                     </h3>
                   </div>
 
                   {isLoadingCurrentEpisode ? (
                     <div className="py-10 text-center" aria-busy="true">
                       <p className="text-sm font-medium text-nuraTextSecondary">
-                        Loading current health episode...
+                        {t('dashboard.loadingEpisode')}
                       </p>
                     </div>
                   ) : currentEpisodeError ? (
@@ -772,16 +777,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <div className="space-y-6">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="text-xs font-semibold text-nuraTextSecondary/70 tracking-wide">
-                          Started {new Date(currentEpisode.started_at).toLocaleString()}
+                          {t('dashboard.started', { date: new Date(currentEpisode.started_at).toLocaleString(locale) })}
                         </div>
                         <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700">
-                          Status: Active
+                          {t('dashboard.status', { status: t('common.active') })}
                         </span>
                       </div>
 
                       <div className="space-y-3 bg-gray-50/60 p-5 rounded-2xl border border-gray-100/80">
                         <div className="text-[11px] font-bold tracking-wider uppercase text-nuraTextSecondary/60">
-                          Symptoms
+                          {t('dashboard.symptoms')}
                         </div>
                         <p className="font-sans text-base sm:text-lg text-nuraText font-normal leading-relaxed whitespace-pre-line">
                           {currentEpisode.initialSymptom.symptoms}
@@ -791,7 +796,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                       <div className="grid grid-cols-2 gap-6 pt-1 px-1">
                         <div className="space-y-1">
                           <span className="text-xs font-medium text-nuraTextSecondary uppercase tracking-wider">
-                            Severity
+                            {t('dashboard.severity')}
                           </span>
                           <div className="font-heading font-bold text-xl text-nuraText">
                             {currentEpisode.initialSymptom.severity} <span className="text-sm font-normal text-nuraTextSecondary">/ 10</span>
@@ -800,7 +805,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
                         <div className="space-y-1">
                           <span className="text-xs font-medium text-nuraTextSecondary uppercase tracking-wider">
-                            Duration
+                            {t('dashboard.duration')}
                           </span>
                           <div className="font-heading font-bold text-xl text-nuraText">
                             {currentEpisode.initialSymptom.duration}
@@ -819,10 +824,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 space-y-4">
                               <div className="space-y-1.5">
                                 <p className="text-sm font-bold text-nuraText">
-                                  Mark this health episode as complete?
+                                  {t('dashboard.completeQuestion')}
                                 </p>
                                 <p className="text-xs leading-relaxed text-nuraTextSecondary">
-                                  Your symptoms, consultations, questions, prescriptions, lab reports, and follow-ups will remain in your Health Timeline.
+                                  {t('dashboard.completeHelp')}
                                 </p>
                               </div>
 
@@ -842,7 +847,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                   disabled={isCompletingEpisode}
                                   className="px-4 py-2 text-sm font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors disabled:opacity-50"
                                 >
-                                  Keep Active
+                                  {t('dashboard.keepActive')}
                                 </button>
                                 <button
                                   type="button"
@@ -850,7 +855,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                   disabled={isCompletingEpisode}
                                   className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                  {isCompletingEpisode ? 'Completing...' : 'Complete Episode'}
+                                  {isCompletingEpisode ? t('dashboard.completing') : t('dashboard.completeEpisode')}
                                 </button>
                               </div>
                             </div>
@@ -861,17 +866,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   ) : (
                     <div className="py-8 text-center space-y-4">
                       <p className="font-heading text-xl font-bold text-nuraText">
-                        How are you feeling today?
+                        {t('dashboard.feeling')}
                       </p>
                       <p className="text-sm text-nuraTextSecondary max-w-sm mx-auto leading-relaxed">
-                        You don&apos;t have an active health episode. Record a new health concern whenever you need to.
+                        {t('dashboard.noEpisode')}
                       </p>
                       <button
                         type="button"
                         onClick={onStartNewIllness}
                         className="inline-flex items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 transition-colors"
                       >
-                        Start New Episode
+                        {t('dashboard.startEpisode')}
                       </button>
                     </div>
                   )}
@@ -888,7 +893,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         }}
                         className="text-sm font-semibold text-nuraTextSecondary hover:text-primary transition-colors"
                       >
-                        Complete Episode
+                        {t('dashboard.completeEpisode')}
                       </button>
                     )}
                   </div>
@@ -906,15 +911,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-heading font-bold text-lg text-nuraText">
-                      Record Appointment
+                      {t('dashboard.recordAppointment')}
                     </h3>
                   </div>
                   <div className="py-8 space-y-4">
                     <p className="text-sm text-nuraTextSecondary leading-relaxed">
-                      Save what happened during a completed consultation and link the health records that belong to it.
+                      {t('dashboard.recordAppointmentHelp')}
                     </p>
                     <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
-                      Start recording <span>→</span>
+                      {t('dashboard.startRecording')}
                     </span>
                   </div>
                 </div>
@@ -929,12 +934,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               className="bg-white rounded-[1.75rem] p-6 sm:p-8 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] transition-all duration-300"
             >
               <h3 className="font-heading font-bold text-lg text-nuraText mb-5">
-                Latest Follow-up
+                {t('dashboard.latestFollowUp')}
               </h3>
 
               {isLoadingFollowUp ? (
                 <div className="py-8 text-center" aria-busy="true">
-                  <p className="text-sm font-medium text-nuraTextSecondary">Loading latest follow-up...</p>
+                  <p className="text-sm font-medium text-nuraTextSecondary">{t('miscUi.loadingLatest')}</p>
                 </div>
               ) : currentEpisodeError ? (
                 <div className="py-8 text-center" role="alert">
@@ -982,16 +987,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
               ) : currentEpisode ? (
                 <div className="py-8 text-center space-y-2">
-                  <p className="text-sm font-medium text-nuraText">No follow-up recorded yet.</p>
+                  <p className="text-sm font-medium text-nuraText">{t('dashboard.noFollowUp')}</p>
                   <p className="text-xs text-nuraTextSecondary/70">
-                    Once you record a follow-up for this episode, it will appear here.
+                    {t('dashboard.noFollowUpHelp')}
                   </p>
                 </div>
               ) : (
                 <div className="py-8 text-center space-y-2">
-                  <p className="text-sm font-medium text-nuraText">No active follow-up</p>
+                  <p className="text-sm font-medium text-nuraText">{t('dashboard.noActiveFollowUp')}</p>
                   <p className="text-xs text-nuraTextSecondary/70">
-                    Follow-ups will appear here once you start tracking a health episode.
+                    {t('dashboard.noActiveFollowUpHelp')}
                   </p>
                 </div>
               )}
@@ -1002,7 +1007,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   onClick={() => setActiveItem('health-timeline')}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
                 >
-                  <span>View Details</span>
+                          <span>{t('common.viewDetails')}</span>
                   <span className="transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">→</span>
                 </button>
               </div>
@@ -1018,17 +1023,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="font-heading font-bold text-lg text-nuraText">
-                    Health Timeline
+                    {t('nav.timeline')}
                   </h3>
                   <p className="text-xs text-nuraTextSecondary mt-0.5">
-                    Recent activity for your current health episode
+                    {t('dashboard.recentActivity')}
                   </p>
                 </div>
               </div>
 
               {isLoadingTimeline ? (
                 <div className="py-8 text-center">
-                  <p className="text-xs text-nuraTextSecondary">Loading health activity...</p>
+                  <p className="text-xs text-nuraTextSecondary">{t('miscUi.loadingActivity')}</p>
                 </div>
               ) : currentEpisodeError ? (
                 <div className="py-12 text-center" role="alert">
@@ -1069,19 +1074,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               ) : currentEpisode ? (
                 <div className="py-12 text-center space-y-3">
                   <p className="text-sm font-medium text-nuraTextSecondary">
-                    No activity recorded for this episode yet.
+                    {t('miscUi.noEpisodeActivity')}
                   </p>
                   <p className="text-xs text-nuraTextSecondary/70 max-w-sm mx-auto">
-                    Recent activity will appear here as you add records to this health episode.
+                    {t('miscUi.activityHelp')}
                   </p>
                 </div>
               ) : (
                 <div className="py-12 text-center space-y-3">
                   <p className="text-sm font-medium text-nuraText">
-                    No active episode activity
+                    {t('dashboard.noActivity')}
                   </p>
                   <p className="text-xs text-nuraTextSecondary/70 max-w-sm mx-auto">
-                    Start a new health episode to see its recent activity here.
+                    {t('dashboard.noActivityHelp')}
                   </p>
                 </div>
               )}
@@ -1095,7 +1100,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   }}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
                 >
-                  <span>View Complete Timeline</span>
+                  <span>{t('dashboard.viewTimeline')}</span>
                   <span className="transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">→</span>
                 </a>
               </div>
@@ -1127,7 +1132,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                     <div className="space-y-1.5">
                       <h3 className="font-heading font-bold text-base text-nuraText">
-                        Questions Before Appointment
+                        {t('nav.questions')}
                       </h3>
                       <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
                         Generate thoughtful questions to ask your doctor based on your symptoms.
@@ -1155,16 +1160,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                     <div className="space-y-1.5">
                       <h3 className="font-heading font-bold text-base text-nuraText">
-                        Medicine Information
+                        {t('nav.medicines')}
                       </h3>
                       <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-                        Upload a prescription and understand every medicine in simple language.
+                        {t('miscUi.medicineCard')}
                       </p>
                     </div>
                   </div>
                   <div className="pt-6 mt-6 border-t border-gray-100/80 flex items-center justify-between">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-50 text-nuraText border border-gray-200/60 group-hover:border-primary/40 group-hover:text-primary transition-colors duration-200">
-                      Upload Prescription
+                      {t('documents.uploadPrescription')}
                     </span>
                   </div>
                 </motion.div>
@@ -1183,16 +1188,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                     <div className="space-y-1.5">
                       <h3 className="font-heading font-bold text-base text-nuraText">
-                        Lab Report Explanation
+                        {t('nav.labReports')}
                       </h3>
                       <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-                        Upload blood tests or diagnostic reports and receive an easy-to-read explanation.
+                        {t('miscUi.labCard')}
                       </p>
                     </div>
                   </div>
                   <div className="pt-6 mt-6 border-t border-gray-100/80 flex items-center justify-between">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-50 text-nuraText border border-gray-200/60 group-hover:border-primary/40 group-hover:text-primary transition-colors duration-200">
-                      Upload Report
+                      {t('miscUi.uploadReport')}
                     </span>
                   </div>
                 </motion.div>
@@ -1211,7 +1216,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                     <div className="space-y-1.5">
                       <h3 className="font-heading font-bold text-base text-nuraText">
-                        Health Timeline
+                        {t('nav.timeline')}
                       </h3>
                       <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
                         Browse every consultation, symptom, prescription and follow-up in one chronological history.
@@ -1220,7 +1225,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   </div>
                   <div className="pt-6 mt-6 border-t border-gray-100/80 flex items-center justify-between">
                     <span className="text-xs sm:text-sm font-semibold text-primary transform group-hover:translate-x-1.5 transition-transform duration-200 inline-block">
-                      View Timeline →
+                      {t('dashboard.viewTimeline')} →
                     </span>
                   </div>
                 </motion.div>

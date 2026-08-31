@@ -4,6 +4,7 @@ import { FileText, CheckCircle2, ArrowLeft, Activity, AlertCircle, X } from 'luc
 import { supabase } from '../../lib/supabase';
 import { LabReportSummaryPage } from './LabReportSummaryPage';
 import { LabReportAnalysis } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface LabReportItem {
   id: string;
@@ -20,6 +21,7 @@ interface LabReportExplanationPageProps {
 export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> = ({
   onBackToDashboard
 }) => {
+  const { t } = useTranslation();
   const [reports, setReports] = useState<LabReportItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -106,7 +108,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
         !Array.isArray(analysis.parameters) ||
         analysis.parameters.length === 0
       ) {
-        setErrorMessage("Nura couldn't identify a structured laboratory panel with measurable parameters and reference ranges in this document.");
+        setErrorMessage(t('documentErrors.panel'));
         setIsAnalyzing(false);
         isAnalyzingRef.current = false;
         return;
@@ -139,7 +141,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
 
           if (insertError) {
             console.error('Supabase lab_reports insert error:', insertError);
-            setErrorMessage('Report analyzed successfully, but could not be saved to your account history.');
+            setErrorMessage(t('documentErrors.saveLab'));
           } else if (insertedData) {
             finalReportItem = {
               id: insertedData.id,
@@ -156,7 +158,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
         }
       } catch (saveErr) {
         console.error('Error persisting lab report to Supabase:', saveErr);
-        setErrorMessage('Report analyzed successfully, but could not be saved to your account history.');
+        setErrorMessage(t('documentErrors.saveLab'));
       }
 
       setReports((currentReports) => [
@@ -171,7 +173,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
 
     } catch (error) {
       console.error('LAB REPORT ANALYSIS ERROR:', error);
-      setErrorMessage('Could not analyze this lab report. Please try again.');
+      setErrorMessage(t('documentErrors.analyzeLab'));
     } finally {
       isAnalyzingRef.current = false;
       setIsAnalyzing(false);
@@ -187,7 +189,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
 
       if (error) {
         console.error('Supabase lab report delete error:', error);
-        setErrorMessage('Could not delete lab report. Please try again.');
+        setErrorMessage(t('documentErrors.deleteLab'));
         return;
       }
 
@@ -197,7 +199,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
       }
     } catch (err) {
       console.error('Unexpected error deleting lab report:', err);
-      setErrorMessage('Could not delete lab report. Please try again.');
+      setErrorMessage(t('documentErrors.deleteLab'));
     }
   };
 
@@ -208,7 +210,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
 
     const MAX_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      setErrorMessage('File size exceeds the 10 MB limit. Please select a smaller file.');
+      setErrorMessage(t('documentErrors.size'));
       setShowSuccess(false);
       return;
     }
@@ -231,7 +233,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
     }
 
     if (!detectedType) {
-      setErrorMessage('Invalid file type. Only PDF, JPG, and PNG files are allowed.');
+      setErrorMessage(t('documentErrors.typeLab'));
       setShowSuccess(false);
       return;
     }
@@ -284,7 +286,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
             className="inline-flex items-center gap-2 text-xs font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Dashboard</span>
+            <span>{t('common.backDashboard')}</span>
           </button>
         </div>
       )}
@@ -292,13 +294,13 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
       {/* HERO SECTION */}
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/80 text-primary text-xs font-semibold tracking-wider uppercase">
-          LAB REPORT EXPLANATION
+          {t('documents.labInfo')}
         </div>
         <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight">
-          Understand your lab reports.
+          {t('documents.understandLab')}
         </h1>
         <p className="font-sans text-base sm:text-lg text-nuraTextSecondary max-w-2xl leading-relaxed font-medium">
-          Upload a laboratory report and receive a clear, easy-to-read explanation of every important result.
+          {t('documents.labHelp')}
         </p>
       </div>
 
@@ -311,7 +313,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
           className="bg-emerald-50 border border-emerald-200/80 p-4 rounded-2xl flex items-center gap-3 text-emerald-800 shadow-xs"
         >
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span className="text-sm font-semibold">Report uploaded successfully.</span>
+          <span className="text-sm font-semibold">{t('documents.labSuccess')}</span>
         </motion.div>
       )}
 
@@ -368,10 +370,10 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
 
         <div className="space-y-2 max-w-md">
           <h3 className="font-heading font-bold text-lg sm:text-xl text-nuraText">
-            Upload Lab Report
+            {t('documents.uploadLab')}
           </h3>
           <p className="font-sans text-sm text-nuraTextSecondary">
-            Drag & drop a laboratory report or click to browse.
+            {t('documents.labDrop')}
           </p>
         </div>
 
@@ -382,14 +384,14 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
           <span>•</span>
           <span>PNG</span>
           <span>•</span>
-          <span>Maximum 10 MB</span>
+          <span>{t('documents.maxSize')}</span>
         </div>
       </motion.div>
 
       {isAnalyzing && (
         <div className="bg-blue-50 border border-blue-200/80 p-4 rounded-2xl flex items-center gap-3 text-blue-800">
           <Activity className="w-5 h-5 text-blue-600 animate-pulse shrink-0" />
-          <span className="text-sm font-semibold">Analyzing lab report...</span>
+          <span className="text-sm font-semibold">{t('documents.analyzingLab')}</span>
         </div>
       )}
 
@@ -397,10 +399,10 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
       <div className="space-y-6 pt-4">
         <div>
           <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-            Recent Reports
+            {t('documents.recentLabs')}
           </h2>
           <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary mt-0.5">
-            Your uploaded laboratory history and plain-language breakdowns
+            {t('miscUi.recentLabHelp')}
           </p>
         </div>
 
@@ -434,12 +436,12 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
 
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-primary transform group-hover:translate-x-0.5 transition-transform">
-                    View →
+                    {t('common.viewDetails')} →
                   </span>
                   <button
                     onClick={(e) => handleDeleteReport(e, report.id)}
                     className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 flex items-center justify-center transition-colors cursor-pointer"
-                    title="Delete report"
+                    title={t('miscUi.deleteReport')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -455,10 +457,10 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
             </div>
             <div className="space-y-1.5 max-w-sm mx-auto">
               <h3 className="font-heading font-bold text-base text-nuraText">
-                No lab reports uploaded yet.
+                {t('documents.noLabs')}
               </h3>
               <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-                Upload a laboratory report to receive a clear, easy-to-read explanation of every important result.
+                {t('documents.labHelp')}
               </p>
             </div>
           </div>

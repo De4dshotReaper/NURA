@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DurationSelectionProps {
   onContinue: (duration: string) => void;
@@ -7,15 +8,16 @@ interface DurationSelectionProps {
 }
 
 const durationOptions = [
-  "Today",
-  "Yesterday",
-  "2–3 Days",
-  "About a Week",
-  "More than a Week",
-  "I'm Not Sure"
+  { value: 'Today', labelKey: 'workflow.durationToday' },
+  { value: 'Yesterday', labelKey: 'workflow.durationYesterday' },
+  { value: '2–3 Days', labelKey: 'workflow.durationTwoThree' },
+  { value: 'About a Week', labelKey: 'workflow.durationWeek' },
+  { value: 'More than a Week', labelKey: 'workflow.durationMoreWeek' },
+  { value: "I'm Not Sure", labelKey: 'workflow.durationUnsure' },
 ];
 
 export const DurationSelection: React.FC<DurationSelectionProps> = ({ onContinue, symptoms, severity }) => {
+  const { t } = useTranslation();
   const [loaded, setLoaded] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState<string | null>(null);
 
@@ -66,21 +68,21 @@ export const DurationSelection: React.FC<DurationSelectionProps> = ({ onContinue
           }}
         >
           <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight">
-            How long have you been feeling this?
+            {t('workflow.durationTitle')}
           </h1>
           <p className="font-sans text-base sm:text-lg text-nuraTextSecondary font-medium">
-            Choose the option that feels closest.
+            {t('workflow.durationHelp')}
           </p>
         </div>
 
         {/* Duration Cards (6 Stacked Cards) */}
         <div className="w-full max-w-xl mx-auto space-y-3 sm:space-y-4 pt-2">
           {durationOptions.map((option, index) => {
-            const isSelected = selectedDuration === option;
+            const isSelected = selectedDuration === option.value;
             return (
               <div
-                key={option}
-                onClick={() => setSelectedDuration(option)}
+                key={option.value}
+                onClick={() => setSelectedDuration(option.value)}
                 style={{
                   opacity: loaded ? 1 : 0,
                   transform: loaded ? 'translateY(0)' : 'translateY(12px)',
@@ -96,7 +98,7 @@ export const DurationSelection: React.FC<DurationSelectionProps> = ({ onContinue
                 <span className={`font-sans font-semibold text-base sm:text-lg transition-colors duration-200 text-left ${
                   isSelected ? 'text-primary' : 'text-nuraText group-hover:text-primary'
                 }`}>
-                  {option}
+                  {t(option.labelKey)}
                 </span>
                 <div className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all duration-200 ${
                   isSelected ? 'border-primary bg-primary text-white shadow-sm' : 'border-gray-300 group-hover:border-primary/50'
@@ -131,7 +133,7 @@ export const DurationSelection: React.FC<DurationSelectionProps> = ({ onContinue
                 : 'bg-gray-100 text-gray-400 border border-gray-200/60 cursor-not-allowed opacity-70 shadow-none'
             }`}
           >
-            Continue →
+            {t('common.continue')}
           </button>
         </div>
 

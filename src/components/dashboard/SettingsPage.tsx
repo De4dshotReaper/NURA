@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, LogOut, UserRound } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+import { useTranslation } from 'react-i18next';
+import { isSupportedLanguage, supportedLanguages, type SupportedLanguage } from '../../i18n';
 
 interface SettingsPageProps {
   fullName: string;
@@ -18,12 +20,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onUserUpdated,
   onSignedOut,
 }) => {
+  const { t, i18n } = useTranslation();
   const [name, setName] = useState(fullName);
   const [isSavingName, setIsSavingName] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [nameSuccess, setNameSuccess] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
+  const [languageError, setLanguageError] = useState<string | null>(null);
 
   useEffect(() => {
     setName(fullName);
@@ -38,7 +43,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setNameSuccess(null);
 
     if (!trimmedName) {
-      setNameError('Please enter your full name.');
+      setNameError(t('settings.nameRequired'));
       return;
     }
 
@@ -53,16 +58,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
       if (error) {
         console.error('Failed to update account full name:', error);
-        setNameError('Nura couldn’t update your name. Please try again.');
+        setNameError(t('settings.nameError'));
         return;
       }
 
       setName(trimmedName);
       onUserUpdated(data.user);
-      setNameSuccess('Your name has been updated.');
+      setNameSuccess(t('settings.nameUpdated'));
     } catch (error) {
       console.error('Unexpected error updating account full name:', error);
-      setNameError('Nura couldn’t update your name. Please try again.');
+      setNameError(t('settings.nameError'));
     } finally {
       setIsSavingName(false);
     }
@@ -79,16 +84,40 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
       if (error) {
         console.error('Failed to sign out of Nura:', error);
-        setSignOutError('Nura couldn’t sign you out. Please try again.');
+        setSignOutError(t('settings.signOutError'));
         return;
       }
 
       onSignedOut();
     } catch (error) {
       console.error('Unexpected error signing out of Nura:', error);
-      setSignOutError('Nura couldn’t sign you out. Please try again.');
+      setSignOutError(t('settings.signOutError'));
     } finally {
       setIsSigningOut(false);
+    }
+  };
+
+  const handleLanguageChange = async (language: SupportedLanguage) => {
+    if (isSavingLanguage || language === i18n.language) return;
+    const previousLanguage = isSupportedLanguage(i18n.language) ? i18n.language : 'en';
+    setLanguageError(null);
+    await i18n.changeLanguage(language);
+    setIsSavingLanguage(true);
+    try {
+      const { data, error } = await supabase.auth.updateUser({ data: { language } });
+      if (error) {
+        console.error('Failed to persist account language:', error);
+        await i18n.changeLanguage(previousLanguage);
+        setLanguageError(t('settings.languageError'));
+        return;
+      }
+      onUserUpdated(data.user);
+    } catch (error) {
+      console.error('Unexpected error persisting account language:', error);
+      await i18n.changeLanguage(previousLanguage);
+      setLanguageError(t('settings.languageError'));
+    } finally {
+      setIsSavingLanguage(false);
     }
   };
 
@@ -100,17 +129,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         className="inline-flex items-center gap-2 text-sm font-semibold text-nuraTextSecondary hover:text-primary transition-colors group"
       >
         <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-        Back to Dashboard
+        {t('common.backDashboard')}
       </button>
 
       <header className="space-y-3">
         <div className="inline-flex rounded-full bg-blue-50/80 px-3 py-1 text-xs font-semibold tracking-wider text-primary">
-          SETTINGS
+          {t('settings.eyebrow')}
         </div>
         <h1 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-nuraText">
-          Settings
+          {t('settings.title')}
         </h1>
-        <p className="text-base sm:text-lg text-nuraTextSecondary">Manage your Nura account.</p>
+        <p className="text-base sm:text-lg text-nuraTextSecondary">{t('settings.subtitle')}</p>
       </header>
 
       <section className="rounded-[1.75rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
@@ -119,15 +148,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <UserRound className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="font-heading text-lg font-bold text-nuraText">Profile</h2>
-            <p className="text-xs text-nuraTextSecondary">Your personal account information.</p>
+            <h2 className="font-heading text-lg font-bold text-nuraText">{t('settings.profile')}</h2>
+            <p className="text-xs text-nuraTextSecondary">{t('settings.profileHelp')}</p>
           </div>
         </div>
 
         <form onSubmit={handleSaveName} className="space-y-6">
           <div className="space-y-2">
             <label htmlFor="settings-full-name" className="text-xs font-semibold uppercase tracking-wider text-nuraTextSecondary">
-              Full name
+              {t('settings.fullName')}
             </label>
             <input
               id="settings-full-name"
@@ -157,31 +186,46 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               disabled={isSavingName}
               className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSavingName ? 'Saving...' : 'Save Name'}
+              {isSavingName ? t('common.saving') : t('settings.saveName')}
             </button>
           </div>
         </form>
       </section>
 
       <section className="rounded-[1.75rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+        <div className="mb-5">
+          <h2 className="font-heading text-lg font-bold text-nuraText">{t('settings.language')}</h2>
+          <p className="text-xs text-nuraTextSecondary">{t('settings.languageHelp')}</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {supportedLanguages.map((language) => (
+            <button key={language} type="button" disabled={isSavingLanguage} onClick={() => void handleLanguageChange(language)} className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${i18n.language === language ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 bg-white text-nuraTextSecondary hover:border-primary/40 hover:text-nuraText'} disabled:opacity-50`}>
+              {t(`language.${language}`)}
+            </button>
+          ))}
+        </div>
+        {languageError && <p className="mt-3 text-xs font-semibold text-red-700" role="alert">{languageError}</p>}
+      </section>
+
+      <section className="rounded-[1.75rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
         <div className="mb-7">
-          <h2 className="font-heading text-lg font-bold text-nuraText">Account</h2>
-          <p className="text-xs text-nuraTextSecondary">Your sign-in information and account access.</p>
+          <h2 className="font-heading text-lg font-bold text-nuraText">{t('settings.account')}</h2>
+          <p className="text-xs text-nuraTextSecondary">{t('settings.accountHelp')}</p>
         </div>
 
         <div className="space-y-2 pb-7">
-          <span className="text-xs font-semibold uppercase tracking-wider text-nuraTextSecondary">Email</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-nuraTextSecondary">{t('settings.email')}</span>
           <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-nuraText">
             {email}
           </div>
-          <p className="text-xs text-nuraTextSecondary/70">Email changes aren&apos;t available in this prototype.</p>
+          <p className="text-xs text-nuraTextSecondary/70">{t('settings.emailHelp')}</p>
         </div>
 
         <div className="flex flex-col gap-5 border-t border-gray-100 pt-7 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1.5">
-            <h3 className="font-heading text-base font-bold text-nuraText">Sign out of Nura</h3>
+            <h3 className="font-heading text-base font-bold text-nuraText">{t('settings.signOutTitle')}</h3>
             <p className="max-w-lg text-sm leading-relaxed text-nuraTextSecondary">
-              You&apos;ll need to sign in again to access your health records.
+              {t('settings.signOutHelp')}
             </p>
             {signOutError && <p className="text-xs font-semibold text-red-700" role="alert">{signOutError}</p>}
           </div>
@@ -192,7 +236,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <LogOut className="h-4 w-4" />
-            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+            {isSigningOut ? t('settings.signingOut') : t('settings.signOut')}
           </button>
         </div>
       </section>

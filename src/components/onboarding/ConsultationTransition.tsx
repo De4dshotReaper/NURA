@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../common/Button';
+import { useTranslation } from 'react-i18next';
 
 interface ConsultationTransitionProps {
   onComplete: () => void;
@@ -9,18 +10,14 @@ interface ConsultationTransitionProps {
   duration?: string;
 }
 
-const SUBTITLES = [
-  'Saving your notes...',
-  'Organizing your information...',
-  'Almost ready...',
-];
-
 export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
   onComplete,
   symptoms,
   severity,
   duration,
 }) => {
+  const { t } = useTranslation();
+  const subtitles = t('transition.subtitles', { returnObjects: true }) as string[];
   const [subtitleIndex, setSubtitleIndex] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [recordedAt] = useState(() => new Date());
@@ -89,7 +86,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
             {/* Text Section */}
             <div className="space-y-3 z-10 w-full">
               <h2 className="font-heading font-bold text-2xl sm:text-3xl text-nuraText tracking-tight">
-                Preparing your consultation
+                {t('miscUi.preparingConsultation')}
               </h2>
 
               <div className="h-6 relative flex items-center justify-center w-full">
@@ -102,7 +99,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                     transition={{ duration: 0.4, ease: 'easeInOut' }}
                     className="absolute inset-0 flex items-center justify-center font-sans text-sm sm:text-base font-medium text-nuraTextSecondary"
                   >
-                    {SUBTITLES[subtitleIndex]}
+                    {subtitles[subtitleIndex]}
                   </motion.p>
                 </AnimatePresence>
               </div>
@@ -136,7 +133,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
               className="space-y-2"
             >
               <h1 className="font-heading font-extrabold text-3xl sm:text-4xl text-nuraText tracking-tight">
-                Your consultation is prepared.
+                {t('miscUi.consultationPrepared')}
               </h1>
               {/* 2. Subheading fades in */}
               <motion.p
@@ -145,7 +142,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                 transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
                 className="font-sans text-base sm:text-lg text-nuraTextSecondary font-medium"
               >
-                Everything has been organized into a clear summary for your consultation.
+                {t('transition.organized')}
               </motion.p>
             </motion.div>
 
@@ -158,7 +155,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
             >
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">
-                  Consultation Summary
+                  {t('workflow.consultationSummary')}
                 </span>
                 <span className="text-xs font-normal text-gray-400/80 tracking-wide">
                   {formattedRecordedAt}
@@ -173,7 +170,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                   transition={{ duration: 0.4, delay: 0.28, ease: 'easeOut' }}
                 >
                   <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-                    Recorded
+                    {t('workflow.recorded')}
                   </h4>
                   <p className="text-sm sm:text-base font-semibold text-white">
                     {formattedRecordedAt}
@@ -186,10 +183,10 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                   transition={{ duration: 0.4, delay: 0.36, ease: 'easeOut' }}
                 >
                   <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-                    Symptoms
+                    {t('dashboard.symptoms')}
                   </h4>
                   <p className="text-sm sm:text-base text-white leading-relaxed font-semibold whitespace-pre-wrap">
-                    {symptoms || 'No symptoms specified.'}
+                    {symptoms || t('transition.noSymptoms')}
                   </p>
                 </motion.div>
 
@@ -199,10 +196,10 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                   transition={{ duration: 0.4, delay: 0.44, ease: 'easeOut' }}
                 >
                   <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-                    Severity
+                    {t('dashboard.severity')}
                   </h4>
                   <p className="text-sm sm:text-base font-semibold text-white">
-                    {severity !== null && severity !== undefined ? `${severity} / 10` : 'Not specified'}
+                    {severity !== null && severity !== undefined ? `${severity} / 10` : t('transition.notSpecified')}
                   </p>
                 </motion.div>
 
@@ -212,20 +209,20 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                   transition={{ duration: 0.4, delay: 0.52, ease: 'easeOut' }}
                 >
                   <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-                    Duration
+                    {t('dashboard.duration')}
                   </h4>
                   <p className="text-sm sm:text-base font-semibold text-white">
-                    {duration || 'Not specified'}
+                    {duration || t('transition.notSpecified')}
                   </p>
                 </motion.div>
               </div>
 
               <div className="pt-4 border-t border-white/10 space-y-2.5">
                 <p className="text-xs font-medium text-emerald-300/90 flex items-center gap-2">
-                  <span>✓</span> Ready for your consultation
+                  <span>✓</span> {t('transition.ready')}
                 </p>
                 <p className="text-xs font-medium text-emerald-300/90 flex items-center gap-2">
-                  <span>✓</span> Summary prepared
+                  <span>✓</span> {t('transition.prepared')}
                 </p>
               </div>
             </motion.div>
@@ -243,7 +240,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                 onClick={onComplete}
                 className="w-full py-4 text-base font-semibold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
               >
-                Go to Dashboard →
+                {t('transition.dashboard')}
               </Button>
             </motion.div>
           </motion.div>

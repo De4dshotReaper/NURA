@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
+import { useTranslation } from 'react-i18next';
 
 interface SeveritySelectionProps {
   onContinue?: (severity: number) => void;
 }
 
 export const SeveritySelection: React.FC<SeveritySelectionProps> = ({ onContinue }) => {
+  const { t } = useTranslation();
   const [loaded, setLoaded] = useState(false);
   const [selectedSeverity, setSelectedSeverity] = useState<number | null>(null);
 
@@ -73,7 +75,7 @@ export const SeveritySelection: React.FC<SeveritySelectionProps> = ({ onContinue
           }}
         >
           <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight">
-            How severe does it feel today?
+            {t('workflow.severityTitle')}
           </h1>
           <p className="font-sans text-base sm:text-lg text-nuraTextSecondary font-medium">
             Choose the number that feels closest.
@@ -139,7 +141,7 @@ export const SeveritySelection: React.FC<SeveritySelectionProps> = ({ onContinue
                 : 'bg-gray-100 text-gray-400 border border-gray-200/60 cursor-not-allowed opacity-70 shadow-none'
             }`}
           >
-            Continue →
+            {t('common.continue')}
           </button>
         </div>
 

@@ -17,6 +17,8 @@ import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { LoginPage } from './components/auth/LoginPage';
 import { supabase } from './lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
+import i18n, { isSupportedLanguage } from './i18n';
+import { useTranslation } from 'react-i18next';
 
 interface PreviousSymptomEntry {
   id: string;
@@ -42,6 +44,7 @@ interface SymptomEpisodeSelectionProps {
 }
 
 const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSelect, onBack, purpose }) => {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<PreviousSymptomEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -60,7 +63,7 @@ const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSel
 
         if (error) {
           console.error('Failed to load symptom entries for episode selection:', error);
-          setErrorMessage('Unable to load previous symptom entries. Please try again.');
+          setErrorMessage(t('selection.loadError'));
           return;
         }
 
@@ -68,7 +71,7 @@ const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSel
       } catch (error) {
         if (!isMounted) return;
         console.error('Unexpected error loading symptom entries for episode selection:', error);
-        setErrorMessage('Unable to load previous symptom entries. Please try again.');
+        setErrorMessage(t('selection.loadError'));
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -88,32 +91,32 @@ const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSel
           onClick={onBack}
           className="text-sm font-semibold text-nuraTextSecondary hover:text-primary transition-colors"
         >
-          ← Back to Dashboard
+          ← {t('common.backDashboard')}
         </button>
 
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             {purpose === 'follow-up'
-              ? 'Follow-up Visit'
+              ? t('workflow.followUp')
               : purpose === 'questions'
-                ? 'Questions Before Appointment'
-                : 'Record Appointment'}
+                ? t('nav.questions')
+                : t('dashboard.recordAppointment')}
           </p>
           <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-nuraText tracking-tight">
-            Choose a previous symptom entry
+            {t('selection.choose')}
           </h1>
           <p className="text-nuraTextSecondary">
             {purpose === 'follow-up'
-              ? 'Select the illness you want to follow up on.'
+              ? t('selection.followUp')
               : purpose === 'questions'
-                ? 'Select the symptom episode you want to prepare questions for.'
-                : 'Select the symptom episode this appointment belongs to.'}
+                ? t('selection.questions')
+                : t('selection.appointment')}
           </p>
         </div>
 
         {isLoading ? (
           <div className="rounded-[1.5rem] border border-gray-100 bg-white p-10 text-center shadow-sm" aria-busy="true">
-            <p className="text-sm font-medium text-nuraTextSecondary">Loading previous symptom entries...</p>
+            <p className="text-sm font-medium text-nuraTextSecondary">{t('selection.loading')}</p>
           </div>
         ) : errorMessage ? (
           <div className="rounded-[1.5rem] border border-red-100 bg-white p-8 text-center shadow-sm" role="alert">
@@ -121,13 +124,13 @@ const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSel
           </div>
         ) : entries.length === 0 ? (
           <div className="rounded-[1.5rem] border border-gray-100 bg-white p-10 text-center shadow-sm space-y-5">
-            <p className="font-medium text-nuraText">No previous symptom entries found. Record a new illness first.</p>
+            <p className="font-medium text-nuraText">{t('selection.empty')}</p>
             <button
               type="button"
               onClick={onBack}
               className="px-5 py-3 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-blue-600 transition-colors"
             >
-              Back to Dashboard
+              {t('common.backDashboard')}
             </button>
           </div>
         ) : (
@@ -159,6 +162,7 @@ const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSel
 };
 
 export const App: React.FC = () => {
+  const { t } = useTranslation();
   const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'login' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard' | 'follow-up-selection' | 'follow-up-intake' | 'questions-selection' | 'consultation-selection'>('landing');
   const [journeyType, setJourneyType] = useState<'new-illness' | 'follow-up' | null>(null);
   const [symptoms, setSymptoms] = useState<string>('');
@@ -217,7 +221,7 @@ export const App: React.FC = () => {
 
         if (error) {
           console.error('Failed to insert symptom entry into Supabase:', error);
-          setSymptomSaveError('Failed to save symptom details. Please try again.');
+          setSymptomSaveError(t('miscUi.symptomSave'));
           return;
         }
 
@@ -246,7 +250,7 @@ export const App: React.FC = () => {
         }
 
         if (!existingEpisode) {
-          setSymptomSaveError("Your symptoms were saved, but Nura couldn't finish creating this health episode. Please try again.");
+          setSymptomSaveError(t('miscUi.episodeCreate'));
           return;
         }
       }
@@ -256,8 +260,8 @@ export const App: React.FC = () => {
     } catch (err) {
       console.error('Unexpected error saving new illness:', err);
       setSymptomSaveError(symptomEntry
-        ? "Your symptoms were saved, but Nura couldn't finish creating this health episode. Please try again."
-        : 'An unexpected error occurred while saving.');
+        ? t('miscUi.episodeCreate')
+        : t('miscUi.symptomSave'));
     } finally {
       setIsSavingSymptoms(false);
     }
@@ -324,14 +328,14 @@ export const App: React.FC = () => {
 
       if (error) {
         console.error('Failed to insert follow-up entry into Supabase:', error);
-        setFollowUpSaveError('Failed to save your follow-up. Please try again.');
+        setFollowUpSaveError(t('miscUi.followUpSave'));
         return;
       }
 
       setIsFollowUpSaved(true);
     } catch (error) {
       console.error('Unexpected error inserting follow-up entry:', error);
-      setFollowUpSaveError('Failed to save your follow-up. Please try again.');
+      setFollowUpSaveError(t('miscUi.followUpSave'));
     } finally {
       setIsSavingFollowUp(false);
     }
@@ -356,6 +360,7 @@ export const App: React.FC = () => {
   };
 
   const handleSignedOut = () => {
+    void i18n.changeLanguage('en');
     setSession(null);
     setCurrentView('landing');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -385,7 +390,7 @@ export const App: React.FC = () => {
 
         if (error) {
           console.error('Failed to load active health episode for follow-up visit:', error);
-          setFollowUpEpisodeError('Nura couldn’t load your active health episode. Please try again.');
+          setFollowUpEpisodeError(t('miscUi.activeEpisodeLoad'));
           return;
         }
 
@@ -393,7 +398,7 @@ export const App: React.FC = () => {
       } catch (error) {
         if (!isMounted) return;
         console.error('Unexpected error loading active health episode for follow-up visit:', error);
-        setFollowUpEpisodeError('Nura couldn’t load your active health episode. Please try again.');
+        setFollowUpEpisodeError(t('miscUi.activeEpisodeLoad'));
       } finally {
         if (isMounted) setIsLoadingFollowUpEpisode(false);
       }
@@ -413,6 +418,8 @@ export const App: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (isMounted) {
+        const metadataLanguage = session?.user.user_metadata.language;
+        await i18n.changeLanguage(isSupportedLanguage(metadataLanguage) ? metadataLanguage : 'en');
         setSession(session);
         setIsAuthLoading(false);
       }
@@ -422,6 +429,8 @@ export const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (isMounted) {
+        const metadataLanguage = nextSession?.user.user_metadata.language;
+        void i18n.changeLanguage(isSupportedLanguage(metadataLanguage) ? metadataLanguage : 'en');
         setSession(nextSession);
         setIsAuthLoading(false);
       }
@@ -577,7 +586,7 @@ export const App: React.FC = () => {
       return (
         <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
           <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-10 text-center shadow-xl shadow-blue-500/5" aria-busy="true">
-            <p className="text-sm font-medium text-nuraTextSecondary">Loading your active health episode...</p>
+            <p className="text-sm font-medium text-nuraTextSecondary">{t('miscUi.loadingFollowUp')}</p>
           </div>
         </div>
       );
@@ -592,8 +601,8 @@ export const App: React.FC = () => {
               <p className="text-sm text-red-700" role="alert">{followUpEpisodeError}</p>
             </div>
             <div className="flex flex-col-reverse sm:flex-row justify-center gap-3">
-              <button type="button" onClick={goToDashboard} className="px-5 py-3 text-sm font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors">Back to Dashboard</button>
-              <button type="button" onClick={() => setFollowUpEpisodeRefreshKey((key) => key + 1)} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">Try Again</button>
+              <button type="button" onClick={goToDashboard} className="px-5 py-3 text-sm font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors">{t('common.backDashboard')}</button>
+              <button type="button" onClick={() => setFollowUpEpisodeRefreshKey((key) => key + 1)} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">{t('common.tryAgain')}</button>
             </div>
           </div>
         </div>
@@ -606,12 +615,12 @@ export const App: React.FC = () => {
           <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-6">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 font-heading font-bold">✓</div>
             <div className="space-y-2">
-              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-nuraText">Follow-up recorded</h1>
-              <p className="text-sm sm:text-base text-nuraTextSecondary">Your update has been added to your health timeline.</p>
+              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-nuraText">{t('workflow.followUpRecorded')}</h1>
+              <p className="text-sm sm:text-base text-nuraTextSecondary">{t('workflow.followUpRecordedHelp')}</p>
             </div>
             <div className="flex flex-col items-center gap-3 pt-2">
-              <button type="button" onClick={goToDashboard} className="w-full sm:w-auto min-w-[210px] rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">Back to Dashboard</button>
-              <button type="button" onClick={goToHealthTimeline} className="text-sm font-semibold text-primary hover:text-blue-600 transition-colors">View in Health Timeline →</button>
+              <button type="button" onClick={goToDashboard} className="w-full sm:w-auto min-w-[210px] rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">{t('common.backDashboard')}</button>
+              <button type="button" onClick={goToHealthTimeline} className="text-sm font-semibold text-primary hover:text-blue-600 transition-colors">{t('workflow.viewTimeline')}</button>
             </div>
           </div>
         </div>
@@ -623,10 +632,10 @@ export const App: React.FC = () => {
         <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
           <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-6">
             <div className="space-y-3">
-              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-nuraText">No active health episode</h1>
-              <p className="text-sm sm:text-base leading-relaxed text-nuraTextSecondary">Follow-ups are recorded as part of an ongoing health episode. Start a new episode to begin tracking a new health concern.</p>
+              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-nuraText">{t('workflow.noActive')}</h1>
+              <p className="text-sm sm:text-base leading-relaxed text-nuraTextSecondary">{t('workflow.noActiveHelp')}</p>
             </div>
-            <button type="button" onClick={handleStartNewIllness} className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">Start New Episode</button>
+            <button type="button" onClick={handleStartNewIllness} className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">{t('dashboard.startEpisode')}</button>
           </div>
         </div>
       );
@@ -790,7 +799,7 @@ export const App: React.FC = () => {
               }}
               className="w-full py-3.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition-all cursor-pointer shadow-lg shadow-blue-500/10"
             >
-              Back to Landing Page
+              {t('selection.backLanding')}
             </button>
           </div>
         </div>

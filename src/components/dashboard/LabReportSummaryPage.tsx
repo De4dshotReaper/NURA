@@ -14,6 +14,7 @@ import {
   Check,
 } from 'lucide-react';
 import { LabReportAnalysis, LabParameter } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface LabReportSummaryPageProps {
   onBack?: () => void;
@@ -30,10 +31,18 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
   fileType = 'PDF',
   analysisData,
 }) => {
+  const { t } = useTranslation();
+  const displayStatus = (status?: string | null) => {
+    if (status === 'Normal') return t('statusUi.normal');
+    if (status === 'Below Range') return t('statusUi.below');
+    if (status === 'Above Range') return t('statusUi.above');
+    if (status === 'Outside Range') return t('statusUi.outside');
+    return status || t('statusUi.unknown');
+  };
   const parameters: LabParameter[] = analysisData?.parameters || [];
-  const reportType = analysisData?.reportType || 'Not identified';
-  const laboratory = analysisData?.laboratory || 'Not available';
-  const reportDate = analysisData?.reportDate || uploadDate || 'Not available';
+  const reportType = analysisData?.reportType || t('summaryUi.notAvailable');
+  const laboratory = analysisData?.laboratory || t('summaryUi.notAvailable');
+  const reportDate = analysisData?.reportDate || uploadDate || t('summaryUi.notAvailable');
   const rawText = analysisData?.rawText || null;
 
   const [expandedParams, setExpandedParams] = useState<Record<string, boolean>>(
@@ -82,7 +91,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
             className="inline-flex items-center gap-2 text-xs font-semibold text-nuraTextSecondary hover:text-nuraText transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Lab Reports</span>
+            <span>{t('documents.backLabs')}</span>
           </button>
         </div>
       )}
@@ -93,10 +102,10 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
           LAB REPORT EXPLANATION
         </div>
         <h1 className="font-heading font-extrabold text-3xl sm:text-4xl md:text-5xl text-nuraText tracking-tight leading-tight">
-          Understand your lab reports.
+          {t('summaryUi.labTitle')}
         </h1>
         <p className="font-sans text-base sm:text-lg text-nuraTextSecondary max-w-2xl leading-relaxed font-medium">
-          Upload a laboratory report and receive a clear, easy-to-read explanation of every important result.
+          {t('summaryUi.labSubtitle')}
         </p>
       </div>
 
@@ -131,7 +140,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
             onClick={() => setShowOriginalModal(true)}
             className="px-5 py-2.5 rounded-xl border border-gray-200/80 bg-gray-50/50 hover:bg-gray-100/80 text-nuraText font-semibold text-sm transition-all duration-200 cursor-pointer inline-flex items-center gap-2 shadow-2xs"
           >
-            <span>View Original Report</span>
+            <span>{t('documents.originalReport')}</span>
             <ExternalLink className="w-4 h-4 opacity-60" />
           </button>
         </div>
@@ -140,7 +149,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-              Report Type
+              {t('summaryUi.reportType')}
             </div>
             <div className="font-heading font-bold text-base text-nuraText">
               {reportType}
@@ -149,7 +158,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
 
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-              Laboratory
+              {t('summaryUi.laboratory')}
             </div>
             <div className="font-heading font-bold text-base text-nuraText">
               {laboratory}
@@ -158,7 +167,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
 
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-              Report Date
+              {t('summaryUi.reportDate')}
             </div>
             <div className="font-heading font-bold text-base text-nuraText">
               {reportDate}
@@ -167,10 +176,10 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
 
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-              Parameters Analysed
+              {t('summaryUi.parameters')}
             </div>
             <div className="font-heading font-bold text-base text-nuraText">
-              {parameters.length} Parameters
+              {t('previewUi.parameters', { count: parameters.length })}
             </div>
           </div>
         </div>
@@ -179,11 +188,11 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
         <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs font-bold text-nuraTextSecondary uppercase tracking-wider">
-              Status:
+              {t('labels.status')}:
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
               <Check className="w-3.5 h-3.5 text-emerald-600" />
-              Analysis Complete
+              {t('summaryUi.analysisComplete')}
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50/50 text-blue-800 border border-blue-200/40">
               {parameters.length} parameters processed
@@ -196,7 +205,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
           </div>
 
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200/60">
-            ✓ Report successfully processed
+            ✓ {t('summaryUi.processed')}
           </div>
         </div>
       </motion.div>
@@ -206,10 +215,10 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
         <div className="space-y-6">
           <div className="space-y-1">
             <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-              Key Findings
+              {t('summaryUi.findings')}
             </h2>
             <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary">
-              Highlighted parameters from your report with simple explanations.
+              {t('summaryUi.findingsHelp')}
             </p>
           </div>
 
@@ -237,7 +246,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                 >
                   {isAbnormal && (
                     <div className="absolute top-0 right-0 bg-amber-100/70 text-amber-800 text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">
-                      Requires Attention
+                      {t('summaryUi.attention')}
                     </div>
                   )}
                   <div className="space-y-2 pt-1">
@@ -263,11 +272,11 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                         }`}
                       >
-                        {param.status}
+                        {displayStatus(param.status)}
                       </span>
                     </div>
                     <div className="font-heading font-extrabold text-2xl text-nuraText">
-                      {param.value || 'Not available'}{' '}
+                      {param.value || t('summaryUi.notAvailable')}{' '}
                       {param.unit && (
                         <span className="text-sm font-normal text-nuraTextSecondary">
                           {param.unit}
@@ -287,7 +296,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                     <p className="text-xs text-nuraTextSecondary font-medium">
                       {param.shortExplanation ||
                         param.simpleExplanation ||
-                        'No additional explanation available.'}
+                        t('summaryUi.noExplanation')}
                     </p>
                   </div>
                 </div>
@@ -301,16 +310,16 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
       <div className="space-y-6">
         <div className="space-y-1">
           <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-nuraText tracking-tight">
-            Complete Report
+            {t('summaryUi.completeReport')}
           </h2>
           <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary">
-            Every result from your report, explained in simple language.
+            {t('summaryUi.completeHelp')}
           </p>
         </div>
 
         {parameters.length === 0 ? (
           <div className="bg-white rounded-[1.75rem] p-8 text-center border border-gray-100 text-nuraTextSecondary text-sm">
-            No measurable parameters identified in this report.
+            {t('summaryUi.noParameters')}
           </div>
         ) : (
           <div className="space-y-4">
@@ -323,8 +332,8 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                 param.status === 'Outside Range';
               const currentValue =
                 [param.value, param.unit].filter(Boolean).join(' ') ||
-                'Not available';
-              const referenceRange = param.referenceRange || 'Not provided on report';
+                t('summaryUi.notAvailable');
+              const referenceRange = param.referenceRange || t('summaryUi.notProvided');
 
               return (
                 <motion.div
@@ -362,7 +371,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                             {isAbnormal && (
                               <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                             )}
-                            {param.status}
+                            {displayStatus(param.status)}
                           </span>
                         </div>
                         {param.subtitle && (
@@ -402,7 +411,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2">
                           <div className="bg-white p-4 rounded-2xl border border-gray-200/60 shadow-2xs space-y-1">
                             <span className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                              Current Value
+                              {t('summaryUi.currentValue')}
                             </span>
                             <div className="font-heading font-extrabold text-lg text-nuraText">
                               {currentValue}
@@ -411,7 +420,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
 
                           <div className="bg-white p-4 rounded-2xl border border-gray-200/60 shadow-2xs space-y-1">
                             <span className="text-[11px] font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                              Reference Range
+                              {t('summaryUi.referenceRange')}
                             </span>
                             <div className="font-heading font-extrabold text-lg text-nuraText">
                               {referenceRange}
@@ -423,7 +432,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                         {param.simpleExplanation && (
                           <div className="space-y-1.5">
                             <div className="text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                              What it measures
+                              {t('summaryUi.measures')}
                             </div>
                             <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed">
                               "{param.simpleExplanation}"
@@ -435,7 +444,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                         {param.meaningOfResult && (
                           <div className="space-y-1.5">
                             <div className="text-xs font-bold uppercase tracking-wider text-nuraTextSecondary/70">
-                              Your result
+                              {t('summaryUi.yourResult')}
                             </div>
                             <p className="font-sans text-sm sm:text-base text-nuraText font-normal leading-relaxed">
                               "{param.meaningOfResult}"
@@ -464,10 +473,10 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
         </div>
         <div className="space-y-2">
           <h4 className="font-heading font-bold text-base text-nuraText">
-            Lab reports provide information—not a diagnosis.
+            {t('summaryUi.labDisclaimer')}
           </h4>
           <p className="font-sans text-xs sm:text-sm text-nuraTextSecondary leading-relaxed">
-            Abnormal values do not always indicate illness. Only a qualified healthcare professional can interpret your complete medical history together with these results.
+            {t('summaryUi.labDisclaimerHelp')}
           </p>
         </div>
       </motion.div>
@@ -500,7 +509,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
                       {reportTitle}
                     </h3>
                     <p className="text-xs text-nuraTextSecondary">
-                      {analysisData?.laboratory || 'Laboratory not identified'} • Uploaded {uploadDate} • <span className="uppercase">{fileType}</span>
+                      {analysisData?.laboratory || t('summaryUi.laboratoryUnknown')} • {t('documents.uploaded')} {uploadDate} • <span className="uppercase">{fileType}</span>
                     </p>
                   </div>
                 </div>
@@ -516,14 +525,14 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
               <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200/80 space-y-4 max-h-[350px] overflow-y-auto">
                 <div className="space-y-1">
                   <h4 className="font-heading font-bold text-sm text-nuraText">
-                    Extracted Report Text
+                    {t('summaryUi.extractedText')}
                   </h4>
                   <p className="text-xs text-nuraTextSecondary">
-                    Below is the raw textual content extracted from the uploaded document.
+                    {t('summaryUi.extractedHelp')}
                   </p>
                 </div>
                 <div className="bg-white p-4 rounded-xl border border-gray-200 text-xs text-nuraText font-mono whitespace-pre-wrap leading-relaxed">
-                  {rawText || 'No extracted report text is available for this report.'}
+                  {rawText || t('summaryUi.noExtracted')}
                 </div>
               </div>
 

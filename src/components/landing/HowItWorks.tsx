@@ -14,20 +14,22 @@ import {
   FileText,
   ShieldCheck
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /* -------------------------------------------------------------------------- */
 /*                        STEP MINI-DASHBOARD PREVIEWS                        */
 /* -------------------------------------------------------------------------- */
 
 const SymptomChecklistPreview: React.FC = () => {
+  const { t } = useTranslation();
   const symptoms = ["Low Fever (38°C)", "Dry Cough", "Mild Fatigue"];
 
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/90 space-y-2 text-left pointer-events-none select-none">
       <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
-        <span className="text-[10px] font-bold text-nuraText font-heading">Logged Symptoms</span>
+        <span className="text-[10px] font-bold text-nuraText font-heading">{t('previewUi.loggedSymptoms')}</span>
         <span className="text-[8px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100/80">
-          Active Log
+          {t('previewUi.activeLog')}
         </span>
       </div>
       <div className="space-y-1">
@@ -73,6 +75,7 @@ const DoctorConsultationPreview: React.FC = () => {
 };
 
 const NuraDashboardPreview: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/90 space-y-2 text-left pointer-events-none select-none">
       <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
@@ -80,20 +83,20 @@ const NuraDashboardPreview: React.FC = () => {
           <div className="w-5 h-5 rounded-md bg-primary text-white flex items-center justify-center font-bold text-[9px]">
             N
           </div>
-          <span className="text-[10px] font-bold text-nuraText font-heading">Nura Dashboard</span>
+          <span className="text-[10px] font-bold text-nuraText font-heading">{t('previewUi.dashboard')}</span>
         </div>
         <motion.span 
           animate={{ scale: [0.98, 1, 0.98] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
           className="text-[8px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100/80"
         >
-          3 Insights
+          {t('previewUi.insights')}
         </motion.span>
       </div>
       <div className="p-2 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 rounded-lg border border-blue-100/80 flex items-center justify-between">
         <div>
-          <p className="text-[9px] font-bold text-nuraText">Consultation Plan</p>
-          <p className="text-[8px] text-nuraTextSecondary">Summary & Instructions</p>
+          <p className="text-[9px] font-bold text-nuraText">{t('previewUi.consultationPlan')}</p>
+          <p className="text-[8px] text-nuraTextSecondary">{t('previewUi.summaryInstructions')}</p>
         </div>
         <ArrowUpRight className="w-3.5 h-3.5 text-primary" />
       </div>
@@ -123,12 +126,13 @@ const PrescriptionLabPreview: React.FC = () => {
 };
 
 const AppointmentChecklistPreview: React.FC = () => {
-  const items = ["3 Questions Prepared", "Symptom History Ready", "Report Summarized"];
+  const { t } = useTranslation();
+  const items = [t('previewUi.questionsPrepared'), t('previewUi.historyReady'), t('previewUi.reportSummarized')];
 
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/90 space-y-1.5 text-left pointer-events-none select-none">
       <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-        <span className="text-[10px] font-bold text-nuraText font-heading">Follow-up Prep</span>
+        <span className="text-[10px] font-bold text-nuraText font-heading">{t('previewUi.followUpPrep')}</span>
         <span className="text-[8px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100/80">
           3/3 Ready
         </span>
@@ -144,28 +148,30 @@ const AppointmentChecklistPreview: React.FC = () => {
 };
 
 const CompletedTimelinePreview: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/90 space-y-2 text-left pointer-events-none select-none">
       <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-        <span className="text-[10px] font-bold text-nuraText font-heading">Health Journey</span>
+        <span className="text-[10px] font-bold text-nuraText font-heading">{t('previewUi.healthJourney')}</span>
         <motion.span 
           animate={{ scale: [0.98, 1, 0.98] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-          Fully Recovered
+          {t('previewUi.recovered')}
         </motion.span>
       </div>
       <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50/80 border border-emerald-100 text-[9px] text-emerald-800 font-semibold">
         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-        <span>100% Recovery Completed</span>
+        <span>{t('previewUi.recoveryComplete')}</span>
       </div>
     </div>
   );
 };
 
 const FinalDashboardRevealPreview: React.FC = () => {
+  const { t } = useTranslation();
   const items = [
     { title: "Consultation Overview", desc: "Doctor's notes & symptoms", icon: User, color: "text-blue-600", bg: "bg-blue-50" },
     { title: "Prescription Guide", desc: "Dosage schedule & purpose", icon: Pill, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -183,13 +189,13 @@ const FinalDashboardRevealPreview: React.FC = () => {
             N
           </div>
           <div>
-            <p className="font-heading font-bold text-base text-nuraText">Nura Unified Dashboard</p>
-            <p className="text-xs text-nuraTextSecondary">All healthcare insights synchronized</p>
+            <p className="font-heading font-bold text-base text-nuraText">{t('previewUi.unified')}</p>
+            <p className="text-xs text-nuraTextSecondary">{t('previewUi.synchronized')}</p>
           </div>
         </div>
         <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          Journey Complete
+          {t('previewUi.journeyComplete')}
         </span>
       </div>
 
@@ -212,8 +218,8 @@ const FinalDashboardRevealPreview: React.FC = () => {
         {/* Summary Card */}
         <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/80 to-indigo-50/60 border border-blue-100/80 flex items-center justify-between col-span-1 sm:col-span-2 lg:col-span-1">
           <div>
-            <p className="font-heading font-bold text-xs sm:text-sm text-primary">Ready for Care</p>
-            <p className="text-[11px] text-nuraTextSecondary mt-0.5">Secure & private health hub</p>
+            <p className="font-heading font-bold text-xs sm:text-sm text-primary">{t('previewUi.readyCare')}</p>
+            <p className="text-[11px] text-nuraTextSecondary mt-0.5">{t('previewUi.secureHub')}</p>
           </div>
           <ArrowUpRight className="w-4.5 h-4.5 text-primary" />
         </div>
@@ -294,6 +300,8 @@ const timelineSteps: TimelineStep[] = [
 ];
 
 export const HowItWorks: React.FC = () => {
+  const { t } = useTranslation();
+  const localizedSteps = t('howPage.steps', { returnObjects: true }) as Array<{ title: string; description: string }>;
   const timelineRef = useRef<HTMLDivElement>(null);
   
   const { scrollYProgress } = useScroll({
@@ -317,15 +325,15 @@ export const HowItWorks: React.FC = () => {
         >
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100/60 text-primary text-xs font-bold uppercase tracking-wider shadow-xs">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>HOW IT WORKS</span>
+            <span>{t('howPage.badge')}</span>
           </div>
           
           <h2 className="text-3xl md:text-5xl font-extrabold font-heading text-nuraText leading-[1.15] tracking-tight">
-            From feeling unwell to feeling better.
+            {t('howPage.title')}
           </h2>
           
           <p className="text-base sm:text-lg text-nuraTextSecondary leading-relaxed font-normal opacity-90 max-w-2xl mx-auto">
-            See how Nura supports you throughout your healthcare journey after you leave the doctor's office.
+            {t('howPage.subtitle')}
           </p>
         </motion.div>
 
@@ -402,19 +410,19 @@ export const HowItWorks: React.FC = () => {
                           </div>
                           {/* Step Number Badge */}
                           <span className="text-xs font-bold tracking-wider px-3 py-1 rounded-full bg-gray-100/80 text-nuraTextSecondary md:hidden">
-                            STEP {item.step}
+                            {t('howPage.step', { step: item.step })}
                           </span>
                           <span className="hidden md:inline-block text-xs font-bold tracking-wider px-3 py-1 rounded-full bg-gray-100/80 text-nuraTextSecondary">
-                            STEP {item.step}
+                            {t('howPage.step', { step: item.step })}
                           </span>
                         </div>
 
                         <h3 className="text-xl sm:text-2xl font-bold font-heading text-nuraText leading-tight">
-                          {item.title}
+                          {localizedSteps[index].title}
                         </h3>
 
                         <p className="text-nuraTextSecondary text-sm sm:text-base leading-relaxed">
-                          {item.description}
+                          {localizedSteps[index].description}
                         </p>
                       </div>
 
@@ -450,13 +458,13 @@ export const HowItWorks: React.FC = () => {
           >
             <div className="space-y-4 relative z-10">
               <span className="text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 shadow-xs inline-block">
-                Journey Complete
+                {t('howPage.complete')}
               </span>
               <h3 className="text-3xl md:text-5xl font-extrabold font-heading text-nuraText tracking-tight leading-[1.15]">
-                Everything, in one place.
+                {t('howPage.everything')}
               </h3>
               <p className="text-base sm:text-lg text-nuraTextSecondary leading-relaxed max-w-2xl mx-auto font-normal opacity-90">
-                Your consultations, prescriptions, reports, and follow-up visits—all organized inside Nura.
+                {t('howPage.completeHelp')}
               </p>
             </div>
 
