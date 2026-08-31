@@ -99,39 +99,6 @@ Gemini is accessed through server-side Supabase Edge Functions rather than direc
 - Git
 - GitHub
 
----
-
-## 🏗️ Architecture
-                              ┌─────────────────────┐
-                         │        USER         │
-                                └──────────┬──────────┘
-                 │
-                 \/
-                    ┌───────────────────────────┐
-                    │         FRONTEND          │
-                    │                           │
-                    │  React + TypeScript       │
-                    │  Tailwind CSS + Vite      │
-                    │                           │
-                    │     Hosted on Vercel      │
-                    └─────────────┬─────────────┘
-                    │
-                    ▼
-                    ┌───────────────────────────┐
-                    │          SUPABASE         │
-                    │                           │
-                    │  • Authentication         │
-                    │  • PostgreSQL Database    │
-                    │  • Row Level Security     │
-                    │  • Edge Functions         │
-                    └─────────────┬─────────────┘
-                  │
-                  ▼
-                    ┌───────────────────────────┐
-                    │       GOOGLE GEMINI       │
-                    │                           │
-                    │    AI Processing & OCR    │
-                    └───────────────────────────┘
 
 ## 🔐 Data & Security
 
