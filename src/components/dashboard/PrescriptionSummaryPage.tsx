@@ -26,6 +26,7 @@ interface PrescriptionSummaryPageProps {
   medicines: ExtractedMedicine[];
   storagePath: string | null;
   isExplanationLoading?: boolean;
+  showBackButton?: boolean;
 }
 
 export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = ({
@@ -36,6 +37,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
   medicines,
   storagePath,
   isExplanationLoading = false,
+  showBackButton = true,
 }) => {
   const { t } = useTranslation();
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
@@ -100,7 +102,7 @@ export const PrescriptionSummaryPage: React.FC<PrescriptionSummaryPageProps> = (
       className="max-w-4xl mr-auto space-y-10 pb-20 select-none"
     >
       {/* Back navigation if provided */}
-      {onBack && (
+      {showBackButton && onBack && (
         <div>
           <button
             onClick={onBack}

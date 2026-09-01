@@ -24,6 +24,7 @@ interface LabReportSummaryPageProps {
   fileType: string;
   analysisData: LabReportAnalysis;
   storagePath: string | null;
+  showBackButton?: boolean;
 }
 
 export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
@@ -33,6 +34,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
   fileType,
   analysisData,
   storagePath,
+  showBackButton = true,
 }) => {
   const { t } = useTranslation();
   const displayStatus = (status?: string | null) => {
@@ -127,7 +129,7 @@ export const LabReportSummaryPage: React.FC<LabReportSummaryPageProps> = ({
       className="max-w-4xl mr-auto space-y-10 pb-20 select-none"
     >
       {/* Back navigation */}
-      {onBack && (
+      {showBackButton && onBack && (
         <div>
           <button
             onClick={onBack}

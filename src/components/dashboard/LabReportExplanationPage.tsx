@@ -19,10 +19,13 @@ interface LabReportItem {
 
 interface LabReportExplanationPageProps {
   onBackToDashboard?: () => void;
+  activeReportId?: string | null;
+  onOpenReport?: (id: string) => void;
+  onBackToReports?: () => void;
 }
 
 export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> = ({
-  onBackToDashboard
+  onBackToDashboard, activeReportId = null, onOpenReport, onBackToReports
 }) => {
   const { t, i18n } = useTranslation();
   const language = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
@@ -32,7 +35,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeReport, setActiveReport] = useState<LabReportItem | null>(null);
+  const activeReport = reports.find((item) => item.id === activeReportId) ?? null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isAnalyzingRef = useRef(false);
 
@@ -183,7 +186,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
         finalReportItem,
         ...currentReports.filter((r) => r.id !== newReportItem.id && r.id !== finalReportItem.id),
       ]);
-      setActiveReport(finalReportItem);
+      onOpenReport?.(finalReportItem.id);
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
@@ -214,9 +217,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
       }
 
       setReports((current) => current.filter((r) => r.id !== reportId));
-      if (activeReport?.id === reportId) {
-        setActiveReport(null);
-      }
+      if (activeReportId === reportId) onBackToReports?.();
     } catch (err) {
       console.error('Unexpected error deleting lab report:', err);
       setErrorMessage(t('documentErrors.deleteLab'));
@@ -283,12 +284,13 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
   if (activeReport && activeReport.analysis) {
     return (
       <LabReportSummaryPage
-        onBack={() => setActiveReport(null)}
+        onBack={() => onBackToReports?.()}
         reportTitle={activeReport.title}
         uploadDate={activeReport.date}
         fileType={activeReport.fileType}
         analysisData={activeReport.analysis}
         storagePath={activeReport.storagePath}
+        showBackButton={false}
       />
     );
   }
@@ -437,7 +439,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
                 transition={{ duration: 0.2 }}
                 onClick={() => {
                   if (report.analysis) {
-                    setActiveReport(report);
+                    onOpenReport?.(report.id);
                   }
                 }}
                 className="bg-white rounded-[1.25rem] p-5 sm:p-6 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] flex items-center justify-between group cursor-pointer"

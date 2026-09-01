@@ -19,6 +19,9 @@ import { supabase } from './lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import i18n, { isSupportedLanguage } from './i18n';
 import { useTranslation } from 'react-i18next';
+import { useNavigationHistory } from './navigation/useNavigationHistory';
+import type { AppView } from './navigation/useNavigationHistory';
+import { NavigationHistoryControls } from './components/layout/NavigationHistoryControls';
 
 interface PreviousSymptomEntry {
   id: string;
@@ -163,7 +166,8 @@ const SymptomEpisodeSelection: React.FC<SymptomEpisodeSelectionProps> = ({ onSel
 
 export const App: React.FC = () => {
   const { t } = useTranslation();
-  const [currentView, setCurrentView] = useState<'landing' | 'privacy' | 'login' | 'onboarding-1' | 'next-flow' | 'severity-selection' | 'duration-selection' | 'new-illness-summary' | 'consultation-transition' | 'duration-complete' | 'dashboard' | 'follow-up-selection' | 'follow-up-intake' | 'questions-selection' | 'consultation-selection'>('landing');
+  const navigation = useNavigationHistory();
+  const currentView = navigation.current.view;
   const [journeyType, setJourneyType] = useState<'new-illness' | 'follow-up' | null>(null);
   const [symptoms, setSymptoms] = useState<string>('');
   const [severityScore, setSeverityScore] = useState<number | null>(null);
@@ -183,6 +187,28 @@ export const App: React.FC = () => {
   const [dashboardInitialItem, setDashboardInitialItem] = useState<'dashboard' | 'health-timeline'>('dashboard');
   const [selectedQuestionSymptomEntryId, setSelectedQuestionSymptomEntryId] = useState<string | null>(null);
   const [selectedConsultationSymptomEntryId, setSelectedConsultationSymptomEntryId] = useState<string | null>(null);
+  const setCurrentView = (view: AppView) => navigation.navigate({
+    view,
+    ...(view === 'dashboard' ? {
+      dashboardItem: dashboardInitialItem,
+      questionSymptomEntryId: selectedQuestionSymptomEntryId,
+      consultationSymptomEntryId: selectedConsultationSymptomEntryId,
+    } : {}),
+  });
+  const withNavigationControls = (content: React.ReactNode) => (
+    <>
+      {(navigation.canGoBack || navigation.canGoForward) && (
+        <NavigationHistoryControls
+          onBack={navigation.back}
+          onForward={navigation.forward}
+          canGoBack={navigation.canGoBack}
+          canGoForward={navigation.canGoForward}
+          className="fixed left-5 top-20 z-[60] sm:left-6 sm:top-24"
+        />
+      )}
+      {content}
+    </>
+  );
 
   const handleConfirmNewIllness = async () => {
     if (isSavingSymptoms) return;
@@ -362,7 +388,7 @@ export const App: React.FC = () => {
   const handleSignedOut = () => {
     void i18n.changeLanguage('en');
     setSession(null);
-    setCurrentView('landing');
+    navigation.reset({ view: 'landing' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -450,7 +476,7 @@ export const App: React.FC = () => {
       || currentView === 'consultation-selection';
 
     if (!isAuthLoading && requiresAuthentication && !session) {
-      setCurrentView('login');
+      navigation.reset({ view: 'login' });
     }
   }, [currentView, isAuthLoading, session]);
 
@@ -463,6 +489,7 @@ export const App: React.FC = () => {
   // Intercept clicks on anchor links like #get-started or #dashboard
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      if (e.defaultPrevented) return;
       const target = (e.target as HTMLElement).closest('a');
       if (target) {
         const href = target.getAttribute('href');
@@ -521,13 +548,22 @@ export const App: React.FC = () => {
           setCurrentView('dashboard');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        initialActiveItem={selectedQuestionSymptomEntryId
+        initialActiveItem={navigation.current.questionSymptomEntryId
           ? 'questions'
-          : selectedConsultationSymptomEntryId
+          : navigation.current.consultationSymptomEntryId
             ? 'appointment'
             : dashboardInitialItem}
-        questionSymptomEntryId={selectedQuestionSymptomEntryId}
-        consultationSymptomEntryId={selectedConsultationSymptomEntryId}
+        activeItem={navigation.current.dashboardItem ?? (navigation.current.questionSymptomEntryId ? 'questions' : navigation.current.consultationSymptomEntryId ? 'appointment' : 'dashboard')}
+        selectedHealthEpisodeId={navigation.current.healthEpisodeId ?? null}
+        selectedPrescriptionId={navigation.current.prescriptionId ?? null}
+        selectedLabReportId={navigation.current.labReportId ?? null}
+        onNavigateDashboard={(dashboardItem, context = {}) => navigation.navigate({ view: 'dashboard', dashboardItem, ...context })}
+        onBack={navigation.back}
+        onForward={navigation.forward}
+        canGoBack={navigation.canGoBack}
+        canGoForward={navigation.canGoForward}
+        questionSymptomEntryId={navigation.current.questionSymptomEntryId ?? selectedQuestionSymptomEntryId}
+        consultationSymptomEntryId={navigation.current.consultationSymptomEntryId ?? selectedConsultationSymptomEntryId}
         userId={session.user.id}
         userFullName={typeof session.user.user_metadata.full_name === 'string'
           ? session.user.user_metadata.full_name
@@ -540,13 +576,13 @@ export const App: React.FC = () => {
   }
 
   if (currentView === 'questions-selection' && session) {
-    return (
+    return withNavigationControls(
       <SymptomEpisodeSelection
         purpose="questions"
         onBack={() => setCurrentView('dashboard')}
         onSelect={(id) => {
           setSelectedQuestionSymptomEntryId(id);
-          setCurrentView('dashboard');
+          navigation.navigate({ view: 'dashboard', dashboardItem: 'questions', questionSymptomEntryId: id });
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -554,13 +590,13 @@ export const App: React.FC = () => {
   }
 
   if (currentView === 'consultation-selection' && session) {
-    return (
+    return withNavigationControls(
       <SymptomEpisodeSelection
         purpose="consultation"
         onBack={() => setCurrentView('dashboard')}
         onSelect={(id) => {
           setSelectedConsultationSymptomEntryId(id);
-          setCurrentView('dashboard');
+          navigation.navigate({ view: 'dashboard', dashboardItem: 'appointment', consultationSymptomEntryId: id });
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -583,7 +619,7 @@ export const App: React.FC = () => {
     };
 
     if (isLoadingFollowUpEpisode) {
-      return (
+      return withNavigationControls(
         <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
           <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-10 text-center shadow-xl shadow-blue-500/5" aria-busy="true">
             <p className="text-sm font-medium text-nuraTextSecondary">{t('miscUi.loadingFollowUp')}</p>
@@ -593,7 +629,7 @@ export const App: React.FC = () => {
     }
 
     if (followUpEpisodeError) {
-      return (
+      return withNavigationControls(
         <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
           <div className="w-full max-w-xl rounded-[2rem] border border-red-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-5">
             <div className="space-y-2">
@@ -610,7 +646,7 @@ export const App: React.FC = () => {
     }
 
     if (isFollowUpSaved) {
-      return (
+      return withNavigationControls(
         <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
           <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-6">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 font-heading font-bold">✓</div>
@@ -628,7 +664,7 @@ export const App: React.FC = () => {
     }
 
     if (!selectedSymptomEntryId) {
-      return (
+      return withNavigationControls(
         <div className="min-h-screen bg-nuraBg px-6 py-16 flex items-center justify-center">
           <div className="w-full max-w-xl rounded-[2rem] border border-gray-100 bg-white p-8 sm:p-10 text-center shadow-xl shadow-blue-500/5 space-y-6">
             <div className="space-y-3">
@@ -641,7 +677,7 @@ export const App: React.FC = () => {
       );
     }
 
-    return (
+    return withNavigationControls(
       <FollowUpIntake
         onComplete={handleCompleteFollowUp}
         isSaving={isSavingFollowUp}
@@ -651,7 +687,7 @@ export const App: React.FC = () => {
   }
 
   if (currentView === 'privacy') {
-    return (
+    return withNavigationControls(
       <PrivacyPolicy
         onBackToHome={() => {
           setCurrentView('landing');
@@ -663,7 +699,7 @@ export const App: React.FC = () => {
   }
 
   if (currentView === 'login') {
-    return (
+    return withNavigationControls(
       <LoginPage
         onBackToHome={() => {
           setCurrentView('landing');
@@ -678,7 +714,7 @@ export const App: React.FC = () => {
     );
   }
 
-  return (
+  return withNavigationControls(
     <div className="min-h-screen bg-white text-nuraText font-sans relative selection:bg-primary/10 selection:text-primary overflow-x-hidden">
       {/* Animated Ambient Light Background Effect (Apple Health / OS style) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-white">
@@ -696,7 +732,11 @@ export const App: React.FC = () => {
           <LandingNavbar
             onStartJourney={handleStartJourney}
             onSignIn={() => {
-              setCurrentView('login');
+              navigation.navigate({ view: 'login' });
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onOpenDashboard={() => {
+              navigation.navigate({ view: 'dashboard', dashboardItem: 'dashboard' });
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             isAuthenticated={!!session}
@@ -710,7 +750,7 @@ export const App: React.FC = () => {
             <FAQ
               session={session}
               onSignIn={() => {
-                setCurrentView('login');
+                navigation.navigate({ view: 'login' });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             />

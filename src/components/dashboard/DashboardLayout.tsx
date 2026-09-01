@@ -12,6 +12,8 @@ import {
   Settings as SettingsIcon,
   Menu,
   X,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 import { MedicineInformationPage } from './MedicineInformationPage';
 import { LabReportExplanationPage } from './LabReportExplanationPage';
@@ -164,6 +166,15 @@ interface DashboardLayoutProps {
   userEmail?: string;
   onAuthenticatedUserUpdated?: (user: User) => void;
   onSignedOut?: () => void;
+  activeItem: string;
+  selectedHealthEpisodeId: string | null;
+  selectedPrescriptionId: string | null;
+  selectedLabReportId: string | null;
+  onNavigateDashboard: (item: string, context?: { healthEpisodeId?: string | null; prescriptionId?: string | null; labReportId?: string | null }) => void;
+  onBack: () => void;
+  onForward: () => void;
+  canGoBack: boolean;
+  canGoForward: boolean;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -183,13 +194,20 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   userEmail,
   onAuthenticatedUserUpdated,
   onSignedOut,
+  activeItem,
+  selectedHealthEpisodeId,
+  selectedPrescriptionId,
+  selectedLabReportId,
+  onNavigateDashboard,
+  onBack,
+  onForward,
+  canGoBack,
+  canGoForward,
 }) => {
   const { t, i18n } = useTranslation();
   const selectedLanguage = isSupportedLanguage(i18n.language) ? i18n.language : 'en';
   const locale = languageLocale[selectedLanguage];
-  const [activeItem, setActiveItem] = useState<string>(initialActiveItem);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [selectedHealthEpisodeId, setSelectedHealthEpisodeId] = useState<string | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<CurrentHealthEpisode | null>(null);
   const [isLoadingCurrentEpisode, setIsLoadingCurrentEpisode] = useState<boolean>(true);
   const [currentEpisodeError, setCurrentEpisodeError] = useState<string | null>(null);
@@ -529,8 +547,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   setMobileMenuOpen(false);
                   onStartQuestions?.();
                 } else {
-                  if (item.id === 'health-episodes') setSelectedHealthEpisodeId(null);
-                  setActiveItem(item.id);
+                  onNavigateDashboard(item.id, item.id === 'health-episodes' ? { healthEpisodeId: null } : undefined);
                   setMobileMenuOpen(false);
                 }
               }}
@@ -655,26 +672,30 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* RIGHT MAIN DASHBOARD CONTENT AREA */}
       <main className="flex-1 h-full overflow-y-auto pt-24 md:pt-12 lg:pt-16 pb-20 px-6 sm:px-10 lg:px-16 bg-white">
+        <div className="max-w-4xl mb-6 flex items-center gap-2" aria-label="Application navigation history">
+          <button type="button" onClick={onBack} disabled={!canGoBack} aria-label="Back" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-nuraTextSecondary transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-35"><ArrowLeft className="h-4 w-4" /></button>
+          <button type="button" onClick={onForward} disabled={!canGoForward} aria-label="Forward" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-nuraTextSecondary transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-35"><ArrowRight className="h-4 w-4" /></button>
+        </div>
         {activeItem === 'medicines' ? (
-          <MedicineInformationPage onBackToDashboard={() => setActiveItem('dashboard')} />
+          <MedicineInformationPage activePrescriptionId={selectedPrescriptionId} onOpenPrescription={(id) => onNavigateDashboard('medicines', { prescriptionId: id })} onBackToMedicines={onBack} onBackToDashboard={() => onNavigateDashboard('dashboard')} />
         ) : activeItem === 'lab-reports' ? (
-          <LabReportExplanationPage onBackToDashboard={() => setActiveItem('dashboard')} />
+          <LabReportExplanationPage activeReportId={selectedLabReportId} onOpenReport={(id) => onNavigateDashboard('lab-reports', { labReportId: id })} onBackToReports={onBack} onBackToDashboard={() => onNavigateDashboard('dashboard')} />
         ) : activeItem === 'health-timeline' ? (
-          <HealthTimelinePage onBackToDashboard={() => setActiveItem('dashboard')} />
+          <HealthTimelinePage onBackToDashboard={() => onNavigateDashboard('dashboard')} />
         ) : activeItem === 'health-episodes' && userId ? (
           <HealthEpisodesPage
             userId={userId}
             selectedEpisodeId={selectedHealthEpisodeId}
-            onSelectEpisode={setSelectedHealthEpisodeId}
-            onBackToEpisodes={() => setSelectedHealthEpisodeId(null)}
-            onBackToDashboard={() => setActiveItem('dashboard')}
+            onSelectEpisode={(id) => onNavigateDashboard('health-episodes', { healthEpisodeId: id })}
+            onBackToEpisodes={onBack}
+            onBackToDashboard={() => onNavigateDashboard('dashboard')}
             onStartNewEpisode={() => onStartNewIllness?.()}
           />
         ) : activeItem === 'settings' && onAuthenticatedUserUpdated && onSignedOut ? (
           <SettingsPage
             fullName={userFullName ?? ''}
             email={userEmail ?? ''}
-            onBackToDashboard={() => setActiveItem('dashboard')}
+            onBackToDashboard={() => onNavigateDashboard('dashboard')}
             onUserUpdated={onAuthenticatedUserUpdated}
             onSignedOut={onSignedOut}
           />
@@ -683,7 +704,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             symptomEntryId={questionSymptomEntryId}
             userId={userId}
             onBackToDashboard={() => {
-              setActiveItem('dashboard');
+              onNavigateDashboard('dashboard');
               onCloseQuestions?.();
             }}
           />
@@ -692,7 +713,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             symptomEntryId={consultationSymptomEntryId}
             userId={userId}
             onBackToDashboard={() => {
-              setActiveItem('dashboard');
+              onNavigateDashboard('dashboard');
               onCloseConsultation?.();
             }}
             onSaved={onConsultationSaved}
@@ -1004,7 +1025,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="pt-6 mt-6 border-t border-gray-100/80">
                 <button
                   type="button"
-                  onClick={() => setActiveItem('health-timeline')}
+                  onClick={() => onNavigateDashboard('health-timeline')}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
                 >
                           <span>{t('common.viewDetails')}</span>
@@ -1096,7 +1117,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   href="#complete-timeline"
                   onClick={(e) => {
                     e.preventDefault();
-                    setActiveItem('health-timeline');
+                    onNavigateDashboard('health-timeline');
                   }}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-blue-600 transition-colors cursor-pointer group"
                 >
@@ -1151,7 +1172,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  onClick={() => setActiveItem('medicines')}
+                  onClick={() => onNavigateDashboard('medicines')}
                   className="bg-white rounded-[1.75rem] p-6 sm:p-7 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
                 >
                   <div className="space-y-4">
@@ -1179,7 +1200,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  onClick={() => setActiveItem('lab-reports')}
+                  onClick={() => onNavigateDashboard('lab-reports')}
                   className="bg-white rounded-[1.75rem] p-6 sm:p-7 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
                 >
                   <div className="space-y-4">
@@ -1207,7 +1228,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  onClick={() => setActiveItem('health-timeline')}
+                  onClick={() => onNavigateDashboard('health-timeline')}
                   className="bg-white rounded-[1.75rem] p-6 sm:p-7 border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
                 >
                   <div className="space-y-4">

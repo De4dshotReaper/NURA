@@ -241,7 +241,7 @@ export const HealthEpisodesPage: React.FC<HealthEpisodesPageProps> = ({
     };
   }, [userId]);
 
-  if (selectedEpisodeId) return <EpisodeStoryPage episodeId={selectedEpisodeId} userId={userId} onBack={onBackToEpisodes} />;
+  if (selectedEpisodeId) return <EpisodeStoryPage episodeId={selectedEpisodeId} userId={userId} onBack={onBackToEpisodes} showBackButton={false} />;
 
   return (
     <div className="max-w-4xl mr-auto space-y-8">

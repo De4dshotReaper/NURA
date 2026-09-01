@@ -49,10 +49,13 @@ interface MedicineExplanationResponse {
 
 interface MedicineInformationPageProps {
   onBackToDashboard?: () => void;
+  activePrescriptionId?: string | null;
+  onOpenPrescription?: (id: string) => void;
+  onBackToMedicines?: () => void;
 }
 
 export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = ({
-  onBackToDashboard
+  onBackToDashboard, activePrescriptionId = null, onOpenPrescription, onBackToMedicines
 }) => {
   const { t, i18n } = useTranslation();
   const language = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
@@ -64,7 +67,8 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [activeSummaryRx, setActiveSummaryRx] = useState<PrescriptionItem | null>(null);
+  const activeSummaryRx = prescriptions.find((item) => item.id === activePrescriptionId)
+    ?? (latestPrescription?.id === activePrescriptionId ? latestPrescription : null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<PrescriptionResponse | null>(null);
@@ -242,9 +246,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         if (currentLatest?.id !== prescriptionId) return currentLatest;
         return prescriptions.filter((prescription) => prescription.id !== prescriptionId)[0] ?? null;
       });
-      setActiveSummaryRx((currentPrescription) =>
-        currentPrescription?.id === prescriptionId ? null : currentPrescription
-      );
+      if (activePrescriptionId === prescriptionId) onBackToMedicines?.();
 
       if (processedPrescriptionId === prescriptionId) {
         setProcessedPrescriptionId(null);
@@ -474,13 +476,14 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
   if (activeSummaryRx) {
     return (
       <PrescriptionSummaryPage
-        onBack={() => setActiveSummaryRx(null)}
+        onBack={() => onBackToMedicines?.()}
         prescriptionTitle={activeSummaryRx.title}
         uploadDate={formatUploadedAt(activeSummaryRx.uploadedAt)}
         fileType={activeSummaryRx.fileType}
         medicines={activeSummaryRx.medicines}
         storagePath={activeSummaryRx.storagePath}
         isExplanationLoading={activeSummaryRx.id === processedPrescriptionId && isExplanationLoading}
+        showBackButton={false}
       />
     );
   }
@@ -692,7 +695,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
             <div className="pt-2 flex items-center justify-end">
               <button
-                onClick={() => setActiveSummaryRx(latestPrescription)}
+                onClick={() => onOpenPrescription?.(latestPrescription.id)}
                 className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
                 {t('documents.openMedicine')} →
@@ -737,7 +740,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
                 key={rx.id}
                 whileHover={{ scale: 1.008 }}
                 transition={{ duration: 0.2 }}
-                onClick={() => setActiveSummaryRx(rx)}
+                onClick={() => onOpenPrescription?.(rx.id)}
                 className="bg-white rounded-[1.25rem] p-5 sm:p-6 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-4">

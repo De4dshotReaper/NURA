@@ -5,10 +5,11 @@ import { useTranslation } from 'react-i18next';
 interface LandingNavbarProps {
   onStartJourney: () => void;
   onSignIn?: () => void;
+  onOpenDashboard?: () => void;
   isAuthenticated?: boolean;
 }
 
-export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, onSignIn, isAuthenticated = false }) => {
+export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, onSignIn, onOpenDashboard, isAuthenticated = false }) => {
   const { t } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,6 +33,15 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
     { name: t('landing.privacy'), href: '#privacy' },
     { name: t('landing.faq'), href: '#faq' },
   ];
+
+  const handleAccountDestination = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (isAuthenticated) {
+      onOpenDashboard?.();
+    } else {
+      onSignIn?.();
+    }
+  };
 
   return (
     <header
@@ -69,17 +79,7 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
         <div className="hidden md:flex items-center gap-5">
           <a
             href={isAuthenticated ? "#dashboard" : "#login"}
-            onClick={(e) => {
-              if (isAuthenticated) {
-                 e.preventDefault();
-                 // Logic to set currentView to dashboard - wait, landing navbar does not directly change view. 
-                 // The app does. Let's make sure clicking Dashboard works.
-                 // Actually the existing App.tsx handles #dashboard anchor. Let's stick with that.
-              } else if (onSignIn) {
-                e.preventDefault();
-                onSignIn();
-              }
-            }}
+            onClick={handleAccountDestination}
             className="px-4 py-2 text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors duration-300 rounded-xl cursor-pointer inline-flex items-center"
           >
             {isAuthenticated ? t('nav.dashboard') : t('landing.signIn')}
@@ -123,10 +123,7 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
               href={isAuthenticated ? "#dashboard" : "#login"}
               onClick={(e) => {
                 setMobileMenuOpen(false);
-                if (!isAuthenticated && onSignIn) {
-                  e.preventDefault();
-                  onSignIn();
-                }
+                handleAccountDestination(e);
               }}
               className="w-full py-2.5 text-center text-sm font-medium text-nuraTextSecondary hover:text-nuraText transition-colors"
             >
