@@ -14,6 +14,9 @@ import {
   X,
   ArrowLeft,
   ArrowRight,
+  Siren,
+  MapPin,
+  Copy,
 } from 'lucide-react';
 import { MedicineInformationPage } from './MedicineInformationPage';
 import { LabReportExplanationPage } from './LabReportExplanationPage';
@@ -26,6 +29,7 @@ import { supabase } from '../../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { useTranslation } from 'react-i18next';
 import { isSupportedLanguage, languageLocale } from '../../i18n';
+import { buildMapsUrl, buildSmsUri, getCurrentLocation, normalizeSmsPhone, EMERGENCY_LOCATION_OPTIONS } from '../../lib/emergency';
 
 interface NavItem {
   id: string;
@@ -164,6 +168,8 @@ interface DashboardLayoutProps {
   userId?: string;
   userFullName?: string;
   userEmail?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
   onAuthenticatedUserUpdated?: (user: User) => void;
   onSignedOut?: () => void;
   activeItem: string;
@@ -192,6 +198,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   userId,
   userFullName,
   userEmail,
+  emergencyContactName,
+  emergencyContactPhone,
   onAuthenticatedUserUpdated,
   onSignedOut,
   activeItem,
@@ -219,9 +227,43 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [isLoadingFollowUp, setIsLoadingFollowUp] = useState<boolean>(true);
   const [latestFollowUpError, setLatestFollowUpError] = useState<string | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<PreviewTimelineEvent[]>([]);
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [showMissingContact, setShowMissingContact] = useState(false);
+  const [isPreparingEmergency, setIsPreparingEmergency] = useState(false);
+  const [preparedEmergency, setPreparedEmergency] = useState<{ message: string; locationUrl: string | null } | null>(null);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState<boolean>(true);
   const greeting = t(getGreetingKey());
   const firstName = getFirstName(userFullName);
+
+  useEffect(() => {
+    const key = 'nura-emergency-location-prompted';
+    if (!sessionStorage.getItem(key)) setShowLocationPrompt(true);
+  }, []);
+
+  const dismissLocationPrompt = () => {
+    sessionStorage.setItem('nura-emergency-location-prompted', '1');
+    setShowLocationPrompt(false);
+  };
+
+  const requestLocationPermission = () => {
+    dismissLocationPrompt();
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(() => undefined, () => undefined, EMERGENCY_LOCATION_OPTIONS);
+    }
+  };
+
+  const handleEmergency = async () => {
+    if (isPreparingEmergency) return;
+    const phone = normalizeSmsPhone(emergencyContactPhone ?? '');
+    if (!emergencyContactName?.trim() || !phone) { setShowMissingContact(true); return; }
+    setIsPreparingEmergency(true);
+    const position = await getCurrentLocation();
+    const locationUrl = position ? buildMapsUrl(position.coords.latitude, position.coords.longitude) : null;
+    const message = `${t('emergency.message')}${locationUrl ? ` ${t('emergency.locationMessage', { url: locationUrl })}` : ''}`;
+    setPreparedEmergency({ message, locationUrl });
+    setIsPreparingEmergency(false);
+    window.location.href = buildSmsUri(phone, message);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -606,6 +648,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
             {renderNavList(settingsNavItems)}
           </div>
+          <div className="px-1">
+            <button type="button" onClick={() => { setMobileMenuOpen(false); void handleEmergency(); }} disabled={isPreparingEmergency} className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-60"><Siren className="h-4 w-4" />{isPreparingEmergency ? t('emergency.preparing') : t('emergency.button')}</button>
+            <p className="mt-2 px-1 text-[11px] leading-relaxed text-nuraTextSecondary">{t('emergency.notAutomatic')}</p>
+          </div>
         </nav>
       </div>
     </div>
@@ -626,13 +672,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
           <span className="font-heading font-extrabold text-lg text-nuraText">Nura</span>
         </div>
-        <button
+        <div className="flex items-center gap-2"><button type="button" onClick={() => void handleEmergency()} disabled={isPreparingEmergency} className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"><Siren className="h-4 w-4" />{t('emergency.button')}</button><button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-2 rounded-xl text-nuraTextSecondary hover:text-nuraText hover:bg-gray-50 transition-colors"
           aria-label={t('audit.toggleNavigation')}
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        </button></div>
       </div>
 
       {/* MOBILE DRAWER OVERLAY */}
@@ -695,6 +741,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <SettingsPage
             fullName={userFullName ?? ''}
             email={userEmail ?? ''}
+            emergencyContactName={emergencyContactName ?? ''}
+            emergencyContactPhone={emergencyContactPhone ?? ''}
             onBackToDashboard={() => onNavigateDashboard('dashboard')}
             onUserUpdated={onAuthenticatedUserUpdated}
             onSignedOut={onSignedOut}
@@ -1256,6 +1304,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
         )}
       </main>
+
+      {showLocationPrompt && <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/25 p-4 sm:items-center" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-[1.75rem] bg-white p-6 shadow-2xl"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-primary"><MapPin className="h-5 w-5" /></div><h2 className="font-heading text-xl font-bold text-nuraText">{t('emergency.locationTitle')}</h2><p className="mt-2 text-sm leading-relaxed text-nuraTextSecondary">{t('emergency.locationDescription')}</p><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={dismissLocationPrompt} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-nuraTextSecondary">{t('emergency.notNow')}</button><button type="button" onClick={requestLocationPermission} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">{t('emergency.allowLocation')}</button></div></div></div>}
+
+      {showMissingContact && <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/25 p-4 sm:items-center" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-[1.75rem] bg-white p-6 shadow-2xl"><Siren className="h-8 w-8 text-red-600" /><h2 className="mt-4 font-heading text-xl font-bold text-nuraText">{t('emergency.missing')}</h2><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowMissingContact(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-nuraTextSecondary">{t('common.cancel')}</button><button type="button" onClick={() => { setShowMissingContact(false); onNavigateDashboard('settings'); }} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">{t('emergency.addContact')}</button></div></div></div>}
+
+      {preparedEmergency && <div className="fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-lg rounded-2xl border border-red-100 bg-white p-5 shadow-2xl" role="status"><div className="flex items-start justify-between gap-3"><div><h2 className="font-heading font-bold text-nuraText">{t('emergency.fallbackTitle')}</h2><p className="mt-1 text-xs text-nuraTextSecondary">{t('emergency.notAutomatic')}</p></div><button type="button" onClick={() => setPreparedEmergency(null)} className="text-nuraTextSecondary"><X className="h-5 w-5" /></button></div><dl className="mt-4 space-y-2 text-sm"><div><dt className="font-semibold text-nuraTextSecondary">{t('emergency.contactName')}</dt><dd>{emergencyContactName}</dd></div><div><dt className="font-semibold text-nuraTextSecondary">{t('emergency.contactPhone')}</dt><dd>{emergencyContactPhone}</dd></div></dl><div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm leading-relaxed text-nuraText">{preparedEmergency.message}</div>{preparedEmergency.locationUrl && <a href={preparedEmergency.locationUrl} target="_blank" rel="noreferrer" className="mt-3 block break-all text-xs font-semibold text-primary">{preparedEmergency.locationUrl}</a>}<button type="button" onClick={() => void navigator.clipboard?.writeText(preparedEmergency.message)} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-nuraText"><Copy className="h-4 w-4" />{t('emergency.copyMessage')}</button></div>}
     </motion.div>
   );
 };

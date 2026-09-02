@@ -569,6 +569,8 @@ export const App: React.FC = () => {
           ? session.user.user_metadata.full_name
           : undefined}
         userEmail={session.user.email}
+        emergencyContactName={typeof session.user.user_metadata.emergency_contact_name === 'string' ? session.user.user_metadata.emergency_contact_name : undefined}
+        emergencyContactPhone={typeof session.user.user_metadata.emergency_contact_phone === 'string' ? session.user.user_metadata.emergency_contact_phone : undefined}
         onAuthenticatedUserUpdated={handleAuthenticatedUserUpdated}
         onSignedOut={handleSignedOut}
       />

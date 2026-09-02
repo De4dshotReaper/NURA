@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle2, LogOut, UserRound } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, LogOut, UserRound, Phone } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { isSupportedLanguage, supportedLanguages, type SupportedLanguage } from '../../i18n';
+import { normalizeSmsPhone } from '../../lib/emergency';
 
 interface SettingsPageProps {
   fullName: string;
   email: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
   onBackToDashboard: () => void;
   onUserUpdated: (user: User) => void;
   onSignedOut: () => void;
@@ -16,6 +19,8 @@ interface SettingsPageProps {
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   fullName,
   email,
+  emergencyContactName,
+  emergencyContactPhone,
   onBackToDashboard,
   onUserUpdated,
   onSignedOut,
@@ -29,10 +34,38 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [languageError, setLanguageError] = useState<string | null>(null);
+  const [contactName, setContactName] = useState(emergencyContactName);
+  const [contactPhone, setContactPhone] = useState(emergencyContactPhone);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contactSuccess, setContactSuccess] = useState<string | null>(null);
+  const [isSavingContact, setIsSavingContact] = useState(false);
 
   useEffect(() => {
     setName(fullName);
   }, [fullName]);
+
+  useEffect(() => { setContactName(emergencyContactName); }, [emergencyContactName]);
+  useEffect(() => { setContactPhone(emergencyContactPhone); }, [emergencyContactPhone]);
+
+  const handleSaveContact = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const normalizedPhone = normalizeSmsPhone(contactPhone);
+    setContactError(null);
+    setContactSuccess(null);
+    if (!contactName.trim()) { setContactError(t('emergency.nameRequired')); return; }
+    if (!normalizedPhone) { setContactError(t('emergency.phoneInvalid')); return; }
+    setIsSavingContact(true);
+    try {
+      const { data, error } = await supabase.auth.updateUser({ data: {
+        emergency_contact_name: contactName.trim(),
+        emergency_contact_phone: normalizedPhone,
+      } });
+      if (error) { setContactError(t('emergency.saveError')); return; }
+      setContactName(contactName.trim()); setContactPhone(normalizedPhone);
+      onUserUpdated(data.user); setContactSuccess(t('emergency.saved'));
+    } catch { setContactError(t('emergency.saveError')); }
+    finally { setIsSavingContact(false); }
+  };
 
   const handleSaveName = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -189,6 +222,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               {isSavingName ? t('common.saving') : t('settings.saveName')}
             </button>
           </div>
+        </form>
+      </section>
+
+      <section className="rounded-[1.75rem] border border-red-100 bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+        <div className="mb-7 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-700"><Phone className="h-5 w-5" /></div><div><h2 className="font-heading text-lg font-bold text-nuraText">{t('emergency.contactSection')}</h2><p className="text-xs text-nuraTextSecondary">{t('emergency.usedForHelp')}</p></div></div>
+        <form onSubmit={handleSaveContact} className="space-y-5">
+          <div className="space-y-2"><label htmlFor="emergency-name" className="text-xs font-semibold uppercase tracking-wider text-nuraTextSecondary">{t('emergency.contactName')}</label><input id="emergency-name" type="text" value={contactName} disabled={isSavingContact} onChange={(e) => { setContactName(e.target.value); setContactError(null); setContactSuccess(null); }} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" /></div>
+          <div className="space-y-2"><label htmlFor="emergency-phone" className="text-xs font-semibold uppercase tracking-wider text-nuraTextSecondary">{t('emergency.contactPhone')}</label><input id="emergency-phone" type="tel" inputMode="tel" autoComplete="tel" value={contactPhone} disabled={isSavingContact} onChange={(e) => { setContactPhone(e.target.value); setContactError(null); setContactSuccess(null); }} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" /></div>
+          {contactError && <p className="text-xs font-semibold text-red-700" role="alert">{contactError}</p>}
+          {contactSuccess && <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700" role="status"><CheckCircle2 className="h-4 w-4" />{contactSuccess}</p>}
+          <div className="flex justify-end border-t border-gray-100 pt-5"><button type="submit" disabled={isSavingContact} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{isSavingContact ? t('common.saving') : t('emergency.saveContact')}</button></div>
         </form>
       </section>
 

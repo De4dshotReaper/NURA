@@ -3,6 +3,7 @@ import { ArrowLeft, Mail, Lock, AlertCircle, CheckCircle2, Loader2 } from 'lucid
 import { Button } from '../common/Button';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { normalizeSmsPhone } from '../../lib/emergency';
 
 interface LoginPageProps {
   onBackToHome: () => void;
@@ -21,11 +22,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [fullName, setFullName] = useState<string>('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
   
   // Validation and feedback states
   const [emailError, setEmailError] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
   const [nameError, setNameError] = useState<string>('');
+  const [emergencyNameError, setEmergencyNameError] = useState('');
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState('');
   const [authError, setAuthError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -35,11 +40,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setEmailError('');
     setPasswordError('');
     setNameError('');
+    setEmergencyNameError('');
+    setEmergencyPhoneError('');
     setAuthError('');
     setSuccessMessage('');
 
     if (isSignUp && !fullName.trim()) {
       setNameError(t('settings.nameRequired'));
+      isValid = false;
+    }
+
+    if (isSignUp && !emergencyContactName.trim()) {
+      setEmergencyNameError(t('emergency.nameRequired'));
+      isValid = false;
+    }
+    if (isSignUp && !normalizeSmsPhone(emergencyContactPhone)) {
+      setEmergencyPhoneError(t('emergency.phoneInvalid'));
       isValid = false;
     }
 
@@ -79,6 +95,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           options: {
             data: {
               full_name: fullName,
+              emergency_contact_name: emergencyContactName.trim(),
+              emergency_contact_phone: normalizeSmsPhone(emergencyContactPhone),
             },
           },
         });
@@ -217,6 +235,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
               )}
 
+              {isSignUp && (
+                <div className="space-y-4 rounded-2xl border border-red-100 bg-red-50/40 p-4">
+                  <p className="text-xs font-medium text-nuraTextSecondary">{t('emergency.usedForHelp')}</p>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-nuraText">{t('emergency.contactName')}</label>
+                    <input type="text" autoComplete="name" disabled={loading} value={emergencyContactName} onChange={(e) => { setEmergencyContactName(e.target.value); setEmergencyNameError(''); }} className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-4 ${emergencyNameError ? 'border-red-300 focus:ring-red-500/15' : 'border-gray-200 focus:border-primary focus:ring-primary/15'}`} />
+                    {emergencyNameError && <p className="text-xs font-medium text-red-600" role="alert">{emergencyNameError}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-nuraText">{t('emergency.contactPhone')}</label>
+                    <input type="tel" autoComplete="tel" inputMode="tel" disabled={loading} value={emergencyContactPhone} onChange={(e) => { setEmergencyContactPhone(e.target.value); setEmergencyPhoneError(''); }} className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-4 ${emergencyPhoneError ? 'border-red-300 focus:ring-red-500/15' : 'border-gray-200 focus:border-primary focus:ring-primary/15'}`} />
+                    {emergencyPhoneError && <p className="text-xs font-medium text-red-600" role="alert">{emergencyPhoneError}</p>}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-nuraText uppercase tracking-wider">
                   {t('auth.email')}
@@ -313,6 +347,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     setEmailError('');
                     setPasswordError('');
                     setNameError('');
+                    setEmergencyNameError('');
+                    setEmergencyPhoneError('');
                     setAuthError('');
                     setSuccessMessage('');
                   }}
