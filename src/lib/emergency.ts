@@ -24,11 +24,18 @@ export const buildSmsUri = (phone: string, message: string, userAgent = navigato
   return `sms:${phone}${isIOS ? '&' : '?'}body=${encodedBody}`;
 };
 
-export const getCurrentLocation = (): Promise<GeolocationPosition | null> =>
+export const getCurrentLocation = (onPermissionDenied?: () => void): Promise<GeolocationPosition | null> =>
   new Promise((resolve) => {
     if (!('geolocation' in navigator)) {
       resolve(null);
       return;
     }
-    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), EMERGENCY_LOCATION_OPTIONS);
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) onPermissionDenied?.();
+        resolve(null);
+      },
+      EMERGENCY_LOCATION_OPTIONS,
+    );
   });

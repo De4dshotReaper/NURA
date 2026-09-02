@@ -228,6 +228,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [latestFollowUpError, setLatestFollowUpError] = useState<string | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<PreviewTimelineEvent[]>([]);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [showLocationBlocked, setShowLocationBlocked] = useState(false);
   const [showMissingContact, setShowMissingContact] = useState(false);
   const [isPreparingEmergency, setIsPreparingEmergency] = useState(false);
   const [preparedEmergency, setPreparedEmergency] = useState<{ message: string; locationUrl: string | null } | null>(null);
@@ -248,7 +249,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const requestLocationPermission = () => {
     dismissLocationPrompt();
     if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(() => undefined, () => undefined, EMERGENCY_LOCATION_OPTIONS);
+      navigator.geolocation.getCurrentPosition(
+        () => undefined,
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) setShowLocationBlocked(true);
+        },
+        EMERGENCY_LOCATION_OPTIONS,
+      );
     }
   };
 
@@ -257,7 +264,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const phone = normalizeSmsPhone(emergencyContactPhone ?? '');
     if (!emergencyContactName?.trim() || !phone) { setShowMissingContact(true); return; }
     setIsPreparingEmergency(true);
-    const position = await getCurrentLocation();
+    const position = await getCurrentLocation(() => setShowLocationBlocked(true));
     const locationUrl = position ? buildMapsUrl(position.coords.latitude, position.coords.longitude) : null;
     const message = `${t('emergency.message')}${locationUrl ? ` ${t('emergency.locationMessage', { url: locationUrl })}` : ''}`;
     setPreparedEmergency({ message, locationUrl });
@@ -1306,6 +1313,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </main>
 
       {showLocationPrompt && <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/25 p-4 sm:items-center" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-[1.75rem] bg-white p-6 shadow-2xl"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-primary"><MapPin className="h-5 w-5" /></div><h2 className="font-heading text-xl font-bold text-nuraText">{t('emergency.locationTitle')}</h2><p className="mt-2 text-sm leading-relaxed text-nuraTextSecondary">{t('emergency.locationDescription')}</p><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={dismissLocationPrompt} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-nuraTextSecondary">{t('emergency.notNow')}</button><button type="button" onClick={requestLocationPermission} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">{t('emergency.allowLocation')}</button></div></div></div>}
+
+      {showLocationBlocked && <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/25 p-4 sm:items-center" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-[1.75rem] bg-white p-6 shadow-2xl"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><MapPin className="h-5 w-5" /></div><h2 className="font-heading text-xl font-bold text-nuraText">{t('locationPermission.blockedTitle')}</h2><p className="mt-2 text-sm leading-relaxed text-nuraTextSecondary">{t('locationPermission.blockedDescription')}</p><p className="mt-4 rounded-xl bg-blue-50 px-4 py-3 text-sm font-semibold text-primary">{t('locationPermission.worksWithoutLocation')}</p><div className="mt-6 flex justify-end"><button type="button" onClick={() => setShowLocationBlocked(false)} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">{t('common.continue')}</button></div></div></div>}
 
       {showMissingContact && <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/25 p-4 sm:items-center" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-[1.75rem] bg-white p-6 shadow-2xl"><Siren className="h-8 w-8 text-red-600" /><h2 className="mt-4 font-heading text-xl font-bold text-nuraText">{t('emergency.missing')}</h2><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowMissingContact(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-nuraTextSecondary">{t('common.cancel')}</button><button type="button" onClick={() => { setShowMissingContact(false); onNavigateDashboard('settings'); }} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">{t('emergency.addContact')}</button></div></div></div>}
 
