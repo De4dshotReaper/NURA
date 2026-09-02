@@ -64,9 +64,7 @@ export const OnboardingStep1: React.FC<OnboardingStep1Props> = ({ onComplete }) 
         {/* Small Nura Logo at the top */}
         <div className="flex flex-col items-center space-y-4 animate-fade-in">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shadow-blue-500/15">
-              <span className="font-heading font-bold text-2xl leading-none">N</span>
-            </div>
+            <img src="/pwa-192x192.png" alt="" className="h-12 w-12 rounded-2xl object-contain shadow-lg shadow-blue-500/15" />
             <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
               Nura
             </span>

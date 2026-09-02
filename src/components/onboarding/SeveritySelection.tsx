@@ -48,9 +48,7 @@ export const SeveritySelection: React.FC<SeveritySelectionProps> = ({ onContinue
         {/* Top Section: Small Nura Logo & Uppercase Caption */}
         <div className="flex flex-col items-center space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shadow-blue-500/15">
-              <span className="font-heading font-bold text-2xl leading-none">N</span>
-            </div>
+            <img src="/pwa-192x192.png" alt="" className="h-12 w-12 rounded-2xl object-contain shadow-lg shadow-blue-500/15" />
             <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
               Nura
             </span>

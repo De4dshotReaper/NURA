@@ -74,9 +74,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                 }}
                 className="relative flex items-center gap-3.5 z-10"
               >
-                <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
-                  <span className="font-heading font-bold text-2xl leading-none">N</span>
-                </div>
+                <img src="/pwa-192x192.png" alt="" className="h-14 w-14 rounded-2xl object-contain shadow-xl shadow-blue-500/20" />
                 <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
                   Nura
                 </span>
@@ -116,9 +114,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
             {/* Logo & Caption */}
             <div className="flex flex-col items-center space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shadow-blue-500/15">
-                  <span className="font-heading font-bold text-2xl leading-none">N</span>
-                </div>
+                <img src="/pwa-192x192.png" alt="" className="h-12 w-12 rounded-2xl object-contain shadow-lg shadow-blue-500/15" />
                 <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
                   Nura
                 </span>

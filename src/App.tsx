@@ -829,9 +829,7 @@ export const App: React.FC = () => {
       {currentView === 'next-flow' && journeyType === 'follow-up' && (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-transparent">
           <div className="max-w-md space-y-6 bg-white p-8 rounded-[2rem] shadow-xl border border-gray-200/80">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-              <span className="font-heading font-bold text-xl">N</span>
-            </div>
+            <img src="/pwa-192x192.png" alt="" className="mx-auto h-12 w-12 rounded-2xl object-contain" />
             <h2 className="text-2xl font-bold font-heading text-nuraText">{t('audit.nextFlowPrepared')}</h2>
             <p className="text-nuraTextSecondary">
               {t('audit.selectedPath')}: <span className="font-semibold text-primary">{t('audit.followUpReview')}</span>
