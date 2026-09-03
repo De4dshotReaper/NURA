@@ -73,7 +73,6 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<PrescriptionResponse | null>(null);
   const [processedPrescriptionId, setProcessedPrescriptionId] = useState<string | null>(null);
-  const [pdfMessage, setPdfMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedPrescriptionIdRef = useRef<string | null>(null);
@@ -288,7 +287,6 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
     }
 
     setErrorMessage(null);
-    setPdfMessage(null);
     setExtractedData(null);
     setProcessedPrescriptionId(null);
     processedPrescriptionIdRef.current = null;
@@ -307,25 +305,8 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
 
     setShowSuccess(false);
 
-    if (detectedType === 'PDF') {
-      setPdfMessage(t('documentErrors.pdf'));
-      const savedPrescription = await persistProcessedPrescription({
-        fileName: file.name,
-        fileType: detectedType,
-        rawText: null,
-        medicines: [],
-        file,
-      });
-      if (savedPrescription) {
-        setProcessedPrescriptionId(savedPrescription.id);
-        processedPrescriptionIdRef.current = savedPrescription.id;
-        setShowSuccess(true);
-      } else {
-        setErrorMessage(t('documentErrors.savePrescription'));
-      }
-    } else {
-      setOcrLoading(true);
-      try {
+    setOcrLoading(true);
+    try {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('language', language);
@@ -343,7 +324,7 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         }
 
         const prescriptionData = data as PrescriptionResponse;
-        if (!prescriptionData || !Array.isArray(prescriptionData.medicines)) {
+        if (!prescriptionData || !Array.isArray(prescriptionData.medicines) || prescriptionData.medicines.length === 0) {
           throw new Error(t('labels.readPrescription'));
         }
 
@@ -453,11 +434,11 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
             setErrorMessage(t('documentErrors.savePrescription'));
           }
         }
-      } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : t('labels.analyzePrescription'));
-      } finally {
-        setOcrLoading(false);
-      }
+    } catch (err) {
+      console.error('Prescription analysis failed:', err);
+      setErrorMessage(t('labels.analyzePrescription'));
+    } finally {
+      setOcrLoading(false);
     }
   };
 
@@ -604,19 +585,6 @@ export const MedicineInformationPage: React.FC<MedicineInformationPageProps> = (
         >
           <Clock className="w-5 h-5 text-blue-600 animate-spin shrink-0" />
           <span className="text-sm font-semibold">{t('documents.readingPrescription')}</span>
-        </motion.div>
-      )}
-
-      {/* PDF MESSAGE */}
-      {pdfMessage && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl flex items-center gap-3 text-amber-800"
-        >
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-          <span className="text-sm font-semibold">{pdfMessage}</span>
         </motion.div>
       )}
 

@@ -16,6 +16,16 @@ const resolveLanguage = (value: unknown) => {
   return { code, name: languageNames[code] }
 }
 
+const responseHeaders = {
+  ...corsHeaders,
+  'Content-Type': 'application/json',
+}
+
+const nullableString = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() ? value : null
+
+const allowedConfidence = new Set(['high', 'medium', 'low'])
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -33,7 +43,7 @@ serve(async (req) => {
     const contentType = req.headers.get('content-type') || ''
     if (!contentType.includes('multipart/form-data')) {
       return new Response(
-        JSON.stringify({ error: 'Content type must be multipart/form-data containing the prescription image file.' }),
+        JSON.stringify({ error: 'Content type must be multipart/form-data containing the prescription file.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -44,15 +54,22 @@ serve(async (req) => {
 
     if (!file || !(file instanceof File)) {
       return new Response(
-        JSON.stringify({ error: 'No image file provided under form field "file" or "image".' }),
+        JSON.stringify({ error: 'No prescription file provided under form field "file" or "image".' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const mimeType = file.type
-    if (mimeType !== 'image/jpeg' && mimeType !== 'image/jpg' && mimeType !== 'image/png') {
+    const suppliedMimeType = file.type.toLowerCase()
+    const lowerFileName = file.name.toLowerCase()
+    const mimeType = suppliedMimeType || (
+      lowerFileName.endsWith('.pdf') ? 'application/pdf'
+        : lowerFileName.endsWith('.png') ? 'image/png'
+          : lowerFileName.endsWith('.jpg') || lowerFileName.endsWith('.jpeg') ? 'image/jpeg'
+            : ''
+    )
+    if (!['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'].includes(mimeType)) {
       return new Response(
-        JSON.stringify({ error: `Unsupported file type: "${mimeType}". Only JPG, JPEG, and PNG images are supported.` }),
+        JSON.stringify({ error: `Unsupported file type: "${file.type}". Only PDF, JPG, JPEG, and PNG files are supported.` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -65,7 +82,7 @@ serve(async (req) => {
       )
     }
 
-    // Convert file to base64
+    // Gemini accepts both prescription images and PDFs as inline document data.
     const arrayBuffer = await file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
     let binaryString = ''
@@ -74,16 +91,17 @@ serve(async (req) => {
       const chunk = uint8Array.subarray(i, i + chunkSize)
       binaryString += String.fromCharCode.apply(null, chunk as unknown as number[])
     }
-    const base64Image = btoa(binaryString)
+    const base64Document = btoa(binaryString)
 
     // Call Gemini API (gemin-2.5-flash or gemini-1.5-flash)
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${geminiApiKey}`
 
-    const promptText = `You are a medical prescription text extractor. Analyze the attached prescription image and extract ONLY the information clearly visible in the prescription. 
+    const promptText = `You are a conservative medical prescription text extractor. Analyze the attached prescription document and extract ONLY the information clearly visible in the prescription.
 The requested interface language is ${language.name}. This extraction must remain faithful to the source document: do not translate or rewrite medicine names, dosage, frequency, instructions, diagnosis text, doctor name, date, or raw text. This response has no generated explanatory prose.
 Do not invent missing medicine names, dosages, frequencies, or instructions. 
 If text is unclear, return null or mark it as unclear rather than guessing.
 Do not generate medicine explanations, side effects, or medical advice.
+If the document is unrelated, unreadable, malformed, or is not a prescription containing at least one clearly identifiable medicine, return an empty medicines array and null rawText.
 
 Return ONLY a valid JSON object in this exact shape without any markdown wrapping or extra text:
 {
@@ -107,7 +125,7 @@ Return ONLY a valid JSON object in this exact shape without any markdown wrappin
             {
               inline_data: {
                 mime_type: mimeType,
-                data: base64Image
+                data: base64Document
               }
             }
           ]
@@ -166,20 +184,48 @@ Return ONLY a valid JSON object in this exact shape without any markdown wrappin
       )
     }
 
-    let parsedResult
+    let parsedResult: Record<string, unknown>
     try {
       // Clean potential markdown code blocks if any
       const cleanedText = responseText.replace(/^```json\s*([\s\S]*?)\s*```$/, '$1').trim()
       parsedResult = JSON.parse(cleanedText)
-    } catch (_e) {
-      parsedResult = {
-        medicines: [],
-        rawText: responseText
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Gemini returned invalid JSON.' }),
+        { status: 502, headers: responseHeaders }
+      )
+    }
+
+    const sourceMedicines = Array.isArray(parsedResult.medicines) ? parsedResult.medicines : []
+    const medicines = sourceMedicines.map((medicine) => {
+      const source = medicine && typeof medicine === 'object'
+        ? medicine as Record<string, unknown>
+        : {}
+      const confidence = typeof source.confidence === 'string' && allowedConfidence.has(source.confidence)
+        ? source.confidence
+        : null
+
+      return {
+        name: nullableString(source.name),
+        dosage: nullableString(source.dosage),
+        frequency: nullableString(source.frequency),
+        instructions: nullableString(source.instructions),
+        confidence,
       }
+    }).filter((medicine) => medicine.name)
+
+    if (medicines.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'The uploaded document could not be identified as a readable prescription.' }),
+        { status: 422, headers: responseHeaders }
+      )
     }
 
     return new Response(
-      JSON.stringify(parsedResult),
+      JSON.stringify({
+        medicines,
+        rawText: nullableString(parsedResult.rawText),
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
