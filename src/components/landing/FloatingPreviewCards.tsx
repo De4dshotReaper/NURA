@@ -56,9 +56,7 @@ export const FloatingPreviewCards: React.FC = () => {
           {/* App / Workspace Top Header Bar */}
           <div className="bg-slate-50/70 border-b border-gray-100/80 px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-primary text-white text-xs font-bold flex items-center justify-center shadow-sm shadow-blue-500/20">
-                N
-              </div>
+              <img src="/pwa-192x192.png" alt="" className="h-7 w-7 rounded-lg object-contain shadow-sm shadow-blue-500/20" />
               <span className="text-xs font-bold text-nuraText flex items-center gap-2">
                 <Stethoscope className="w-4 h-4 text-primary" />
                 {t('landingPreview.today')}

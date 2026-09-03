@@ -154,9 +154,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
           {/* Minimal Nura Logo */}
           <a href="#" onClick={(e) => { e.preventDefault(); onBackToHome(); }} className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-md shadow-blue-500/10 group-hover:scale-105 transition-all">
-              <span className="font-heading font-bold text-xl leading-none">N</span>
-            </div>
+            <img src="/pwa-192x192.png" alt="" className="w-9 h-9 rounded-xl object-contain shadow-md shadow-blue-500/10 group-hover:scale-105 transition-all" />
             <span className="font-heading font-extrabold text-xl tracking-tight text-nuraText group-hover:text-primary transition-colors">
               Nura
             </span>
@@ -169,9 +167,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             
             {/* Branding Header Inside Card */}
             <div className="text-center mb-8 space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-primary mx-auto shadow-sm">
-                <span className="font-heading font-bold text-2xl leading-none">N</span>
-              </div>
+              <img src="/pwa-192x192.png" alt="" className="w-14 h-14 rounded-2xl object-contain mx-auto shadow-sm" />
               <h1 className="text-2xl sm:text-3xl font-bold font-heading text-nuraText tracking-tight">
                 {isSignUp ? t('auth.create') : t('auth.welcome')}
               </h1>

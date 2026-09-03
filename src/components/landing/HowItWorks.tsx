@@ -81,9 +81,7 @@ const NuraDashboardPreview: React.FC = () => {
     <div className="w-full bg-white rounded-xl p-3.5 shadow-xs border border-gray-100/90 space-y-2 text-left pointer-events-none select-none">
       <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
         <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-md bg-primary text-white flex items-center justify-center font-bold text-[9px]">
-            N
-          </div>
+          <img src="/pwa-192x192.png" alt="" className="w-5 h-5 rounded-md object-contain" />
           <span className="text-[10px] font-bold text-nuraText font-heading">{t('previewUi.dashboard')}</span>
         </div>
         <motion.span 
@@ -187,9 +185,7 @@ const FinalDashboardRevealPreview: React.FC = () => {
       {/* Top Banner */}
       <div className="flex items-center justify-between pb-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-heading font-bold text-lg shadow-md shadow-blue-500/20">
-            N
-          </div>
+          <img src="/pwa-192x192.png" alt="" className="w-10 h-10 rounded-xl object-contain shadow-md shadow-blue-500/20" />
           <div>
             <p className="font-heading font-bold text-base text-nuraText">{t('previewUi.unified')}</p>
             <p className="text-xs text-nuraTextSecondary">{t('previewUi.synchronized')}</p>
