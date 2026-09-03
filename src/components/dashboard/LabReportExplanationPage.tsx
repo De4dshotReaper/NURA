@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { FileText, CheckCircle2, ArrowLeft, Activity, AlertCircle, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { LabReportSummaryPage } from './LabReportSummaryPage';
-import { LabReportAnalysis } from '../../types';
+import { NarrativeReportSummaryPage } from './NarrativeReportSummaryPage';
+import { LabReportAnalysis, NarrativeAnalysisPayload, PersistedLabReportRow } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { normalizeLanguage } from '../../i18n';
 import { removePrivateMedicalFile, uploadPrivateMedicalFile } from '../../lib/privateMedicalFiles';
+import { analysisFromLabReportRow } from '../../lib/labReports';
 
 interface LabReportItem {
   id: string;
@@ -14,6 +16,7 @@ interface LabReportItem {
   fileType: 'PDF' | 'JPG' | 'PNG';
   title: string;
   analysis?: LabReportAnalysis;
+  analysisLoadFailed?: boolean;
   storagePath: string | null;
 }
 
@@ -56,25 +59,23 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
         }
 
         if (data && isMounted) {
-          const loadedReports: LabReportItem[] = data.map((row) => ({
-            id: row.id,
-            title: row.file_name,
-            fileType: row.file_type as 'PDF' | 'JPG' | 'PNG',
-            date: new Date(row.uploaded_at).toLocaleDateString('en-US', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            }),
-            analysis: {
-              reportFormat: 'structured',
-              reportType: row.report_type ?? null,
-              laboratory: row.laboratory ?? null,
-              reportDate: row.report_date ?? null,
-              rawText: row.raw_text ?? null,
-              parameters: row.parameters || [],
-            },
-            storagePath: row.storage_path ?? null,
-          }));
+          const loadedReports: LabReportItem[] = data.map((rawRow) => {
+            const row = rawRow as PersistedLabReportRow;
+            const analysis = analysisFromLabReportRow(row);
+            return {
+              id: row.id,
+              title: row.file_name,
+              fileType: row.file_type as 'PDF' | 'JPG' | 'PNG',
+              date: new Date(row.uploaded_at).toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              }),
+              analysis: analysis ?? undefined,
+              analysisLoadFailed: !analysis,
+              storagePath: row.storage_path ?? null,
+            };
+          });
 
           setReports(loadedReports);
         }
@@ -111,15 +112,24 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
       console.log('LAB REPORT ANALYSIS:', data);
       const analysis = data as LabReportAnalysis;
 
-      if (
-        !analysis ||
-        analysis.reportFormat === 'unsupported' ||
-        !Array.isArray(analysis.parameters) ||
-        analysis.parameters.length === 0
-      ) {
+      if (!analysis) {
         setErrorMessage(t('documentErrors.panel'));
         setIsAnalyzing(false);
         isAnalyzingRef.current = false;
+        return;
+      }
+
+      if (analysis.analysis_type === 'unsupported') {
+        setErrorMessage(t('documentErrors.panel'));
+        setIsAnalyzing(false);
+        isAnalyzingRef.current = false;
+        return;
+      }
+
+      if (analysis.analysis_type === 'narrative') {
+        console.info('Narrative report analysis received:', analysis);
+      } else if (!Array.isArray(analysis.parameters) || analysis.parameters.length === 0) {
+        setErrorMessage(t('documentErrors.panel'));
         return;
       }
 
@@ -130,17 +140,31 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
       let insertedData: Record<string, unknown> | null = null;
       try {
         storagePath = await uploadPrivateMedicalFile('lab-reports', userData.user.id, file);
+        const narrativePayload: NarrativeAnalysisPayload | null = analysis.analysis_type === 'narrative'
+          ? {
+              report_type: analysis.report_type,
+              body_part_or_test: analysis.body_part_or_test,
+              report_date: analysis.report_date,
+              laboratory: analysis.laboratory,
+              summary: analysis.summary,
+              key_findings: analysis.key_findings,
+              impression: analysis.impression,
+              terms_explained: analysis.terms_explained,
+            }
+          : null;
         const insertResult = await supabase
           .from('lab_reports')
           .insert({
             user_id: userData.user.id,
             file_name: newReportItem.title,
             file_type: newReportItem.fileType,
-            report_type: analysis.reportType,
+            analysis_type: analysis.analysis_type,
+            narrative_analysis: narrativePayload,
+            report_type: analysis.analysis_type === 'structured' ? analysis.reportType : analysis.report_type,
             laboratory: analysis.laboratory,
-            report_date: analysis.reportDate,
-            raw_text: analysis.rawText,
-            parameters: analysis.parameters,
+            report_date: analysis.analysis_type === 'structured' ? analysis.reportDate : analysis.report_date,
+            raw_text: analysis.analysis_type === 'structured' ? analysis.rawText : null,
+            parameters: analysis.analysis_type === 'structured' ? analysis.parameters : [],
             uploaded_at: new Date().toISOString(),
             storage_path: storagePath,
           })
@@ -281,7 +305,44 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
     event.target.value = '';
   };
 
+  if (activeReport?.analysisLoadFailed) {
+    return (
+      <div className="max-w-4xl mr-auto space-y-6 pb-16">
+        <button onClick={() => onBackToReports?.()} className="inline-flex items-center gap-2 text-sm font-semibold text-nuraTextSecondary hover:text-nuraText">
+          <ArrowLeft className="w-4 h-4" /> {t('documents.backLabs')}
+        </button>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-800 text-sm font-semibold" role="alert">
+          {t('narrativeUi.loadError')}
+        </div>
+      </div>
+    );
+  }
+
   if (activeReport && activeReport.analysis) {
+    if (activeReport.analysis.analysis_type === 'narrative') {
+      return (
+        <NarrativeReportSummaryPage
+          onBack={() => onBackToReports?.()}
+          reportTitle={activeReport.title}
+          uploadDate={activeReport.date}
+          fileType={activeReport.fileType}
+          analysisData={activeReport.analysis}
+          storagePath={activeReport.storagePath}
+        />
+      );
+    }
+    if (activeReport.analysis.analysis_type === 'unsupported') {
+      return (
+        <div className="max-w-4xl mr-auto space-y-6 pb-16">
+          <button onClick={() => onBackToReports?.()} className="inline-flex items-center gap-2 text-sm font-semibold text-nuraTextSecondary hover:text-nuraText">
+            <ArrowLeft className="w-4 h-4" /> {t('documents.backLabs')}
+          </button>
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-800 text-sm font-semibold">
+            {t('documentErrors.panel')}
+          </div>
+        </div>
+      );
+    }
     return (
       <LabReportSummaryPage
         onBack={() => onBackToReports?.()}
@@ -438,7 +499,7 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
                 whileHover={{ scale: 1.008 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => {
-                  if (report.analysis) {
+                  if (report.analysis || report.analysisLoadFailed) {
                     onOpenReport?.(report.id);
                   }
                 }}
@@ -455,6 +516,12 @@ export const LabReportExplanationPage: React.FC<LabReportExplanationPageProps> =
                     <p className="font-sans text-xs text-nuraTextSecondary mt-0.5">
                       {report.date} • <span className="uppercase font-semibold">{report.fileType}</span>
                     </p>
+                    {report.analysis?.analysis_type === 'narrative' && (
+                      <p className="font-sans text-xs text-primary mt-1 font-semibold">
+                        {report.analysis.report_type || t('narrativeUi.narrativeReport')}
+                        {report.analysis.body_part_or_test ? ` • ${report.analysis.body_part_or_test}` : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
 

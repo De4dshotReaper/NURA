@@ -99,7 +99,8 @@ export interface LabParameter {
   meaningOfResult: string | null;
 }
 
-export interface LabReportAnalysis {
+export interface StructuredLabReportAnalysis {
+  analysis_type: 'structured';
   reportFormat: 'structured' | 'unsupported';
   reportType: string | null;
   laboratory: string | null;
@@ -107,3 +108,47 @@ export interface LabReportAnalysis {
   parameters: LabParameter[];
   rawText: string | null;
 }
+
+export interface NarrativeLabReportAnalysis {
+  analysis_type: 'narrative';
+  report_type: string | null;
+  body_part_or_test: string | null;
+  report_date: string | null;
+  laboratory: string | null;
+  summary: string;
+  key_findings: Array<{ finding: string; explanation: string }>;
+  impression: string | null;
+  terms_explained: Array<{ term: string; explanation: string }>;
+}
+
+export type NarrativeAnalysisPayload = Omit<NarrativeLabReportAnalysis, 'analysis_type'>;
+
+export interface PersistedLabReportRow {
+  id: string;
+  file_name: string;
+  file_type: string;
+  report_type: string | null;
+  laboratory: string | null;
+  report_date: string | null;
+  raw_text: string | null;
+  parameters: unknown;
+  uploaded_at: string;
+  storage_path: string | null;
+  analysis_type?: 'structured' | 'narrative' | null;
+  narrative_analysis?: unknown;
+}
+
+export interface UnsupportedLabReportAnalysis {
+  analysis_type: 'unsupported';
+  reportFormat: 'unsupported';
+  reportType: null;
+  laboratory: null;
+  reportDate: null;
+  parameters: [];
+  rawText: null;
+}
+
+export type LabReportAnalysis =
+  | StructuredLabReportAnalysis
+  | NarrativeLabReportAnalysis
+  | UnsupportedLabReportAnalysis;

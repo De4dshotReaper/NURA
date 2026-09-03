@@ -17,6 +17,7 @@ const resolveLanguage = (value: unknown) => {
 }
 
 const unsupportedReport = {
+  analysis_type: 'unsupported',
   reportFormat: 'unsupported',
   reportType: null,
   laboratory: null,
@@ -35,6 +36,15 @@ const allowedStatuses = new Set([
 
 const nullableString = (value: unknown): string | null =>
   typeof value === 'string' ? value : null
+
+const explainedItems = (value: unknown, labelKey: 'finding' | 'term') =>
+  Array.isArray(value) ? value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const source = item as Record<string, unknown>
+    const label = nullableString(source[labelKey])
+    const explanation = nullableString(source.explanation)
+    return label && explanation ? [{ [labelKey]: label, explanation }] : []
+  }) : []
 
 const responseHeaders = {
   ...corsHeaders,
@@ -96,20 +106,24 @@ serve(async (req) => {
     }
     const base64Document = btoa(binary)
 
-    const promptText = `You are a conservative laboratory-report extractor for Nura. Analyze only the attached document.
+    const promptText = `You are a conservative medical-report extractor for Nura. Analyze only the attached document.
 
-Nura v1 supports structured laboratory reports: genuine panels with clearly identifiable measurable test parameters, measured values, and printed reference ranges (for example CBC, lipid, liver, renal, thyroid, glucose/HbA1c, vitamin, or mineral panels).
+Classify the document from its content as exactly one analysis_type:
+- "structured": primarily a genuine laboratory panel with clearly identifiable measurable test parameters, measured values, and printed reference ranges (for example CBC, lipid, liver, renal, thyroid, glucose/HbA1c, vitamin, or mineral panels).
+- "narrative": primarily a supported diagnostic imaging report (X-ray, ultrasound, CT, or MRI) whose findings, observations, or impression are prose rather than a numerical parameter table.
+- "unsupported": anything else, including unrelated or unreadable documents and documents that cannot confidently be classified. Do not treat arbitrary pathology or histopathology as narrative.
 
-If the document is narrative (MRI, CT, X-ray, ultrasound, histopathology, or similar), unrelated, unreadable, or does not contain a genuine structured laboratory panel with measurable parameters, return the exact unsupported object below. Do not attempt to summarize narrative reports.
+For structured reports, preserve the existing extraction behavior below. Never invent or infer test names, values, units, reference ranges, laboratory names, dates, or text. Use null when an item is absent or unreadable. Extract every clearly identifiable measurable parameter, not only abnormal ones. Use the report's printed reference range to determine status; never substitute generic ranges. If a reliable comparison is not possible, use "Unknown".
 
-Never invent or infer test names, values, units, reference ranges, laboratory names, dates, or text. Use null when an item is absent or unreadable. Extract every clearly identifiable measurable parameter, not only abnormal ones. Use the report's printed reference range to determine status; never substitute generic ranges. If a reliable comparison is not possible, use "Unknown".
+For narrative reports, explain only what the report says, simplify terminology, summarize documented findings, and simplify an explicit Impression, Conclusion, Opinion, or Summary section if present. Set impression to null if no such explicit section exists; never generate a diagnostic impression. Extract only meaningful findings actually present and only terms present in the report. Do not generate questions for the user. Do not diagnose, infer an unstated diagnosis, recommend treatment or medication changes, characterize danger, add severity not explicitly stated, invent findings, or contradict the source. Use source-grounded phrasing such as "The report notes..." and "The impression section states..."; do not say "You have..." or "This confirms..." except as a clearly attributed statement from the report.
 
 Explanations are educational and conservative. simpleExplanation explains what the test generally measures in plain language. meaningOfResult only states how the extracted value compares with the reference range printed on this report. Do not diagnose, claim conditions, infer patient-specific causes, recommend treatment, or advise medication changes.
 
-Write only the generated explanatory values (subtitle, shortExplanation, simpleExplanation, and meaningOfResult) in clear, natural ${language.name}${language.code === 'en' ? '' : ' using Devanagari script'}. Keep source facts exactly as printed: do not translate or rewrite reportType, laboratory, reportDate, parameter names, values, units, printed reference ranges, or rawText. Keep status enum values exactly as specified in the schema. Do not translate JSON property names.
+Write only generated explanatory values in clear, natural ${language.name}${language.code === 'en' ? '' : ' using Devanagari script'}. For structured reports these are subtitle, shortExplanation, simpleExplanation, and meaningOfResult. For narrative reports these are summary, key_findings[].explanation, and terms_explained[].explanation. Keep source facts and identifiers faithful: do not translate or rewrite report/test names, laboratory, dates, parameter names, values, units, reference ranges, rawText, medicine names, or anatomical names where translation would change the medical identifier. Keep structured status enum values exactly as specified. Do not translate JSON property names.
 
-Return ONLY valid JSON with no markdown or extra text in exactly this shape:
+Return ONLY valid JSON with no markdown or extra text. For structured reports return exactly this shape:
 {
+  "analysis_type": "structured",
   "reportFormat": "structured" | "unsupported",
   "reportType": string | null,
   "laboratory": string | null,
@@ -131,8 +145,22 @@ Return ONLY valid JSON with no markdown or extra text in exactly this shape:
   "rawText": string | null
 }
 
+For narrative reports return exactly:
+{
+  "analysis_type": "narrative",
+  "report_type": string | null,
+  "body_part_or_test": string | null,
+  "report_date": string | null,
+  "laboratory": string | null,
+  "summary": string,
+  "key_findings": [{ "finding": string, "explanation": string }],
+  "impression": string | null,
+  "terms_explained": [{ "term": string, "explanation": string }]
+}
+
 For unsupported documents, return exactly:
 {
+  "analysis_type": "unsupported",
   "reportFormat": "unsupported",
   "reportType": null,
   "laboratory": null,
@@ -199,7 +227,26 @@ For unsupported documents, return exactly:
       )
     }
 
-    if (parsedResult.reportFormat !== 'structured') {
+    if (parsedResult.analysis_type === 'narrative') {
+      const summary = nullableString(parsedResult.summary)
+      if (!summary) {
+        return new Response(JSON.stringify(unsupportedReport), { status: 200, headers: responseHeaders })
+      }
+
+      return new Response(JSON.stringify({
+        analysis_type: 'narrative',
+        report_type: nullableString(parsedResult.report_type),
+        body_part_or_test: nullableString(parsedResult.body_part_or_test),
+        report_date: nullableString(parsedResult.report_date),
+        laboratory: nullableString(parsedResult.laboratory),
+        summary,
+        key_findings: explainedItems(parsedResult.key_findings, 'finding'),
+        impression: nullableString(parsedResult.impression),
+        terms_explained: explainedItems(parsedResult.terms_explained, 'term'),
+      }), { status: 200, headers: responseHeaders })
+    }
+
+    if (parsedResult.analysis_type !== 'structured' && parsedResult.reportFormat !== 'structured') {
       return new Response(JSON.stringify(unsupportedReport), { status: 200, headers: responseHeaders })
     }
 
@@ -235,6 +282,7 @@ For unsupported documents, return exactly:
 
     return new Response(
       JSON.stringify({
+        analysis_type: 'structured',
         reportFormat: 'structured',
         reportType: nullableString(parsedResult.reportType),
         laboratory: nullableString(parsedResult.laboratory),

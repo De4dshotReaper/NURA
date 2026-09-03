@@ -13,7 +13,7 @@ import {
   Activity,
   Check,
 } from 'lucide-react';
-import { LabReportAnalysis, LabParameter } from '../../types';
+import { StructuredLabReportAnalysis, LabParameter } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { createPrivateMedicalFileUrl, downloadPrivateMedicalFile } from '../../lib/privateMedicalFiles';
 
@@ -22,7 +22,7 @@ interface LabReportSummaryPageProps {
   reportTitle: string;
   uploadDate: string;
   fileType: string;
-  analysisData: LabReportAnalysis;
+  analysisData: StructuredLabReportAnalysis;
   storagePath: string | null;
   showBackButton?: boolean;
 }

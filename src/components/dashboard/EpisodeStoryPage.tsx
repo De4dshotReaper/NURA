@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, ArrowLeft, Calendar, CheckCircle2, FileText, HelpCircle, Pill } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import type { ExtractedMedicine, LabReportAnalysis } from '../../types';
+import type { ExtractedMedicine, PersistedLabReportRow } from '../../types';
+import { analysisFromLabReportRow } from '../../lib/labReports';
 import { TimelineEventCard, type TimelineEventCardData } from './TimelineEventCard';
 import { PrescriptionSummaryPage } from './PrescriptionSummaryPage';
 import { LabReportSummaryPage } from './LabReportSummaryPage';
+import { NarrativeReportSummaryPage } from './NarrativeReportSummaryPage';
 import { useTranslation } from 'react-i18next';
 import { isSupportedLanguage, languageLocale } from '../../i18n';
 
@@ -14,7 +16,7 @@ interface FollowUp { id: string; progress: string | null; current_symptoms: stri
 interface Consultation { id: string; notes: string; doctor_name: string | null; clinic_name: string | null; follow_up_recommended: boolean; follow_up_notes: string | null; consultation_at: string | null; created_at: string; }
 interface Question { id: string; question: string; previous_consultation_id: string | null; created_at: string; }
 interface Prescription { id: string; file_name: string; file_type: string; medicines: unknown; uploaded_at: string; storage_path: string | null; }
-interface LabReport { id: string; file_name: string; file_type: string; report_type: string | null; laboratory: string | null; report_date: string | null; raw_text: string | null; parameters: unknown; uploaded_at: string; storage_path: string | null; }
+type LabReport = PersistedLabReportRow;
 interface EventGroup { dateKey: string; dateLabel: string; events: TimelineEventCardData[]; }
 
 interface EpisodeStoryPageProps { episodeId: string; userId: string; onBack: () => void; showBackButton?: boolean; }
@@ -67,7 +69,7 @@ export const EpisodeStoryPage: React.FC<EpisodeStoryPageProps> = ({ episodeId, u
         const prescriptionIds = [...new Set(prescriptionLinks.map((link) => link.prescription_id))];
         const labIds = [...new Set(labLinks.map((link) => link.lab_report_id))];
         const prescriptions = prescriptionIds.length ? await safe<Prescription>('Failed to load episode prescriptions:', supabase.from('prescriptions').select('id, file_name, file_type, medicines, uploaded_at, storage_path').in('id', prescriptionIds)) : [];
-        const labs = labIds.length ? await safe<LabReport>('Failed to load episode lab reports:', supabase.from('lab_reports').select('id, file_name, file_type, report_type, laboratory, report_date, raw_text, parameters, uploaded_at, storage_path').in('id', labIds)) : [];
+        const labs = labIds.length ? await safe<LabReport>('Failed to load episode lab reports:', supabase.from('lab_reports').select('id, file_name, file_type, report_type, laboratory, report_date, raw_text, parameters, uploaded_at, storage_path, analysis_type, narrative_analysis').in('id', labIds)) : [];
         if (!mounted) return;
 
         const normalized: TimelineEventCardData[] = [{ id: `symptom-${symptomRow.id}`, title: 'Symptoms Recorded', description: symptomRow.symptoms, timestamp: symptomRow.created_at, icon: Activity, badge: symptomRow.severity === null ? undefined : `${t('dashboard.severity')} ${symptomRow.severity}/10`, badgeColor: 'bg-blue-50 text-blue-700 border-blue-200/60', relationshipLabel: 'Episode start', details: [`${t('dashboard.duration')}: ${symptomRow.duration || t('common.notRecorded')}`] }];
@@ -85,7 +87,12 @@ export const EpisodeStoryPage: React.FC<EpisodeStoryPageProps> = ({ episodeId, u
   }, [episodeId, userId, t]);
 
   if (prescriptionDetail) return <PrescriptionSummaryPage onBack={() => setPrescriptionDetail(null)} prescriptionTitle={prescriptionDetail.file_name} uploadDate={formatDate(prescriptionDetail.uploaded_at, locale)} fileType={prescriptionDetail.file_type} medicines={Array.isArray(prescriptionDetail.medicines) ? prescriptionDetail.medicines as ExtractedMedicine[] : []} storagePath={prescriptionDetail.storage_path} />;
-  if (labDetail) { const analysis: LabReportAnalysis = { reportFormat: 'structured', reportType: labDetail.report_type, laboratory: labDetail.laboratory, reportDate: labDetail.report_date, rawText: labDetail.raw_text, parameters: Array.isArray(labDetail.parameters) ? labDetail.parameters as LabReportAnalysis['parameters'] : [] }; return <LabReportSummaryPage onBack={() => setLabDetail(null)} reportTitle={labDetail.file_name} uploadDate={formatDate(labDetail.uploaded_at, locale)} fileType={labDetail.file_type} analysisData={analysis} storagePath={labDetail.storage_path} />; }
+  if (labDetail) {
+    const analysis = analysisFromLabReportRow(labDetail);
+    if (!analysis) return <div className="max-w-4xl mr-auto space-y-6 pb-16"><button onClick={() => setLabDetail(null)} className="inline-flex items-center gap-2 text-sm font-semibold text-nuraTextSecondary hover:text-primary"><ArrowLeft className="h-4 w-4" />{t('episodes.back')}</button><div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-800" role="alert">{t('narrativeUi.loadError')}</div></div>;
+    if (analysis.analysis_type === 'narrative') return <NarrativeReportSummaryPage onBack={() => setLabDetail(null)} reportTitle={labDetail.file_name} uploadDate={formatDate(labDetail.uploaded_at, locale)} fileType={labDetail.file_type} analysisData={analysis} storagePath={labDetail.storage_path} />;
+    if (analysis.analysis_type === 'structured') return <LabReportSummaryPage onBack={() => setLabDetail(null)} reportTitle={labDetail.file_name} uploadDate={formatDate(labDetail.uploaded_at, locale)} fileType={labDetail.file_type} analysisData={analysis} storagePath={labDetail.storage_path} />;
+  }
 
   const groups: EventGroup[] = Array.from(events.reduce<Map<string, TimelineEventCardData[]>>((map, event) => { const key = localDateKey(event.timestamp); map.set(key, [...(map.get(key) ?? []), event]); return map; }, new Map()).entries()).map(([dateKey, groupEvents]) => ({ dateKey, dateLabel: formatDate(groupEvents[0].timestamp, locale), events: groupEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) })).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
 
