@@ -3,6 +3,7 @@ import { ArrowLeft, Download, FileText, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { VisitPacket } from '../../lib/visitPacket';
 import { isSupportedLanguage, languageLocale, normalizeLanguage } from '../../i18n';
+import { featureFlags } from '../../lib/featureFlags';
 
 interface VisitPacketPreviewPageProps {
   packet: VisitPacket;
@@ -39,7 +40,7 @@ export const VisitPacketPreviewPage: React.FC<VisitPacketPreviewPageProps> = ({ 
   });
 
   const handleDownloadPdf = async () => {
-    if (!import.meta.env.DEV || isPreparingPdf) return;
+    if (!featureFlags.visitPacket || isPreparingPdf) return;
     setIsPreparingPdf(true);
     setPdfError(null);
     try {
@@ -60,7 +61,7 @@ export const VisitPacketPreviewPage: React.FC<VisitPacketPreviewPageProps> = ({ 
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
           {t('visitPacket.back')}
         </button>
-        {import.meta.env.DEV && <button type="button" onClick={() => void handleDownloadPdf()} disabled={isPreparingPdf} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60">
+        {featureFlags.visitPacket && <button type="button" onClick={() => void handleDownloadPdf()} disabled={isPreparingPdf} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60">
           <Download className="h-4 w-4" />
           {isPreparingPdf ? t('visitPacket.preparingPdf') : t('visitPacket.downloadPdf')}
         </button>}

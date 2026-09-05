@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { isSupportedLanguage, languageLocale, normalizeLanguage } from '../../i18n';
 import { buildVisitPacket, type VisitPacket } from '../../lib/visitPacket';
 import { resolveEpisodeLinkedEventTimestamp } from '../../lib/visitPacketScope';
+import { featureFlags } from '../../lib/featureFlags';
 import { VisitPacketPreviewPage } from './VisitPacketPreviewPage';
 
 interface Episode { id: string; initial_symptom_entry_id: string; status: 'active' | 'completed'; started_at: string; completed_at: string | null; }
@@ -119,7 +120,7 @@ export const EpisodeStoryPage: React.FC<EpisodeStoryPageProps> = ({ episodeId, u
   }, [episodeId, userId, t]);
 
   const inspectVisitPacket = async (openPreview = false) => {
-    if (!import.meta.env.DEV || isBuildingVisitPacket) return;
+    if (!featureFlags.visitPacket || isBuildingVisitPacket) return;
     const episodeVersion = episodeVersionRef.current;
     setIsBuildingVisitPacket(true);
     setVisitPacketError(null);
@@ -141,7 +142,7 @@ export const EpisodeStoryPage: React.FC<EpisodeStoryPageProps> = ({ episodeId, u
   };
 
   const handleVisitPacketDownload = async () => {
-    if (!import.meta.env.DEV || !visitPacketPreview || visitPacketPreview.episode.id !== episodeId || pdfOperationRef.current !== null) return;
+    if (!featureFlags.visitPacket || !visitPacketPreview || visitPacketPreview.episode.id !== episodeId || pdfOperationRef.current !== null) return;
     const episodeVersion = episodeVersionRef.current;
     const operationId = Symbol('visit-packet-download');
     pdfOperationRef.current = operationId;
@@ -164,7 +165,7 @@ export const EpisodeStoryPage: React.FC<EpisodeStoryPageProps> = ({ episodeId, u
   };
 
   const handleVisitPacketShare = async () => {
-    if (!import.meta.env.DEV || !visitPacketPreview || visitPacketPreview.episode.id !== episodeId || pdfOperationRef.current !== null || isNativeShareUnavailable) return;
+    if (!featureFlags.visitPacket || !visitPacketPreview || visitPacketPreview.episode.id !== episodeId || pdfOperationRef.current !== null || isNativeShareUnavailable) return;
     const episodeVersion = episodeVersionRef.current;
     const operationId = Symbol('visit-packet-share');
     pdfOperationRef.current = operationId;
@@ -198,7 +199,7 @@ export const EpisodeStoryPage: React.FC<EpisodeStoryPageProps> = ({ episodeId, u
     }
   };
 
-  if (import.meta.env.DEV && isVisitPacketPreviewOpen && visitPacketPreview) {
+  if (featureFlags.visitPacket && isVisitPacketPreviewOpen && visitPacketPreview) {
     return <VisitPacketPreviewPage packet={visitPacketPreview} onBack={() => { setIsVisitPacketPreviewOpen(false); window.requestAnimationFrame(() => previewButtonRef.current?.focus()); }} />;
   }
 
@@ -225,7 +226,7 @@ export const EpisodeStoryPage: React.FC<EpisodeStoryPageProps> = ({ episodeId, u
     {showBackButton && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-nuraTextSecondary hover:text-primary transition-colors group"><ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />{t('episodes.back')}</button>}
     {isLoading ? <div className="rounded-[1.75rem] border border-gray-100 bg-white p-10 text-center" aria-busy="true"><p className="text-sm text-nuraTextSecondary">{t('episodes.loadingStory')}</p></div> : error ? <div className="rounded-[1.75rem] border border-red-100 bg-white p-8 text-center" role="alert"><p className="text-sm text-red-700">{error}</p></div> : !episode || !symptom ? <div className="rounded-[1.75rem] border border-gray-100 bg-white p-10 text-center"><p className="text-sm text-nuraTextSecondary">{t('episodes.notFound')}</p></div> : <>
       <header className="space-y-4"><div className="inline-flex rounded-full bg-blue-50/80 px-3 py-1 text-xs font-semibold tracking-wider text-primary">{t('episodes.healthEpisode')}</div><div className="flex flex-wrap items-start justify-between gap-4"><div className="space-y-2"><h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-nuraText">{t('episodes.healthEpisode')}</h1><p className="max-w-2xl whitespace-pre-line text-lg font-semibold text-nuraText">{symptom.symptoms}</p></div><span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${episode.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{t(`common.${episode.status}`)}</span></div><p className="text-sm text-nuraTextSecondary">{t('episodes.started', { date: formatDate(episode.started_at, locale) })}{episode.status === 'completed' && episode.completed_at ? ` • ${t('episodes.completedOn', { date: formatDate(episode.completed_at, locale) })}` : ''}</p></header>
-      {import.meta.env.DEV && <section className="space-y-4 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-4" aria-labelledby="prepare-for-visit-title">
+      {featureFlags.visitPacket && <section className="space-y-4 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-4" aria-labelledby="prepare-for-visit-title">
         <div><p className="text-xs font-bold uppercase tracking-wider text-amber-800">{t('visitPacket.localDevelopmentOnly')}</p><h2 id="prepare-for-visit-title" className="mt-1 font-heading text-xl font-extrabold text-amber-950">{t('visitPacket.prepareForVisit')}</h2><p className="mt-1 text-sm text-amber-900">{t('visitPacket.prepareDescription')}</p></div>
         {!visitPacketPreview ? <button type="button" onClick={() => void inspectVisitPacket(false)} disabled={isBuildingVisitPacket} aria-busy={isBuildingVisitPacket} className="rounded-xl bg-amber-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50">{isBuildingVisitPacket ? t('visitPacket.buildingPacket') : t('visitPacket.preparePacket')}</button> : <>
           <div className="rounded-xl border border-amber-200 bg-white/80 p-3"><p className="font-semibold text-amber-950">{t('visitPacket.packetReady')}</p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-amber-800">{t('visitPacket.includes')}</p>{visitPacketReadiness.length > 0 && <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-amber-950">{visitPacketReadiness.map((item) => <li key={item} className="before:mr-1.5 before:content-['•']">{item}</li>)}</ul>}</div>
