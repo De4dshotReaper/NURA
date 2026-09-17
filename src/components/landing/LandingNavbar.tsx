@@ -1,3 +1,4 @@
+import { nuraHomeLinkProps } from '../../navigation/landingNavigation';
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -53,7 +54,7 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStartJourney, on
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
         {/* Left: Nura Wordmark */}
-        <a href="#" className="flex items-center gap-3 group">
+        <a {...nuraHomeLinkProps} className="flex items-center gap-3 group">
           <img src="/pwa-192x192.png" alt="" className="h-10 w-10 rounded-xl object-contain shadow-md shadow-blue-500/10 transition-all duration-300 group-hover:scale-105 group-hover:shadow-blue-500/20" />
           <span className="font-heading font-extrabold text-[1.65rem] tracking-tight text-nuraText group-hover:text-primary transition-colors duration-300">
             Nura

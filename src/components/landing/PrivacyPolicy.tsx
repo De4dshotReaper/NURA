@@ -234,7 +234,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBackToHome, onSt
                   </p>
                   <div>
                     <span className="font-semibold text-nuraText">{t('privacyPage.email')}</span>
-                    <span className="ml-2 text-nuraTextSecondary">{t('privacyPage.comingSoon')}</span>
+                    <a href="mailto:nuraforhealth@gmail.com" className="ml-2 text-nuraTextSecondary [overflow-wrap:anywhere] hover:underline focus-visible:underline">nuraforhealth@gmail.com</a>
                   </div>
                 </div>
               </div>

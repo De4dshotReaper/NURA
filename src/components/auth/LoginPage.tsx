@@ -1,3 +1,4 @@
+import { nuraHomeLinkProps } from '../../navigation/landingNavigation';
 import React, { useState } from 'react';
 import { ArrowLeft, Mail, Lock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '../common/Button';
@@ -153,7 +154,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </button>
 
           {/* Minimal Nura Logo */}
-          <a href="#" onClick={(e) => { e.preventDefault(); onBackToHome(); }} className="flex items-center gap-2.5 group">
+          <a {...nuraHomeLinkProps} className="flex items-center gap-2.5 group">
             <img src="/pwa-192x192.png" alt="" className="w-9 h-9 rounded-xl object-contain shadow-md shadow-blue-500/10 group-hover:scale-105 transition-all" />
             <span className="font-heading font-extrabold text-xl tracking-tight text-nuraText group-hover:text-primary transition-colors">
               Nura

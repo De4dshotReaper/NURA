@@ -1,3 +1,4 @@
+import { nuraHomeLinkProps } from '../../navigation/landingNavigation';
 import React from 'react';
 import { Bell, Shield, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -6,13 +7,13 @@ export const Navbar: React.FC = () => {
   const { t } = useTranslation();
   return (
     <header className="sticky top-0 z-30 bg-nuraSurface/90 backdrop-blur-md border-b border-nuraBorder px-6 h-16 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <a {...nuraHomeLinkProps} className="flex items-center gap-3">
         <img src="/pwa-192x192.png" alt="" className="w-10 h-10 rounded-2xl object-contain shadow-sm shadow-primary/30" />
         <div>
           <span className="font-heading font-extrabold text-xl text-nuraText tracking-tight">Nura</span>
           <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-primary border border-blue-200/50">{t('nav.patientCompanion')}</span>
         </div>
-      </div>
+      </a>
 
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center gap-2 text-xs text-nuraTextSecondary bg-nuraBg px-3 py-1.5 rounded-xl border border-nuraBorder">

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { LandingNavbar } from './components/landing/LandingNavbar';
 import { Hero } from './components/landing/Hero';
 import { HowItWorks } from './components/landing/HowItWorks';
@@ -169,6 +170,7 @@ export const App: React.FC = () => {
   const navigation = useNavigationHistory();
   const currentView = navigation.current.view;
   const [journeyType, setJourneyType] = useState<'new-illness' | 'follow-up' | null>(null);
+  const homeNavigationVersion = useRef(0);
   const [symptoms, setSymptoms] = useState<string>('');
   const [severityScore, setSeverityScore] = useState<number | null>(null);
   const [duration, setDuration] = useState<string | null>(null);
@@ -212,6 +214,7 @@ export const App: React.FC = () => {
 
   const handleConfirmNewIllness = async () => {
     if (isSavingSymptoms) return;
+    const navigationVersion = homeNavigationVersion.current;
 
     const trimmedSymptoms = symptoms ? symptoms.trim() : '';
     const trimmedDuration = duration ? duration.trim() : '';
@@ -282,7 +285,10 @@ export const App: React.FC = () => {
       }
 
       setPersistedSymptomEntry(null);
-      setCurrentView('consultation-transition');
+      // A save may finish after the user has navigated home.
+      if (navigationVersion === homeNavigationVersion.current) {
+        setCurrentView('consultation-transition');
+      }
     } catch (err) {
       console.error('Unexpected error saving new illness:', err);
       setSymptomSaveError(symptomEntry
@@ -493,7 +499,13 @@ export const App: React.FC = () => {
       const target = (e.target as HTMLElement).closest('a');
       if (target) {
         const href = target.getAttribute('href');
-        if (href === '#get-started') {
+        if (target.hasAttribute('data-nura-home')) {
+          e.preventDefault();
+          homeNavigationVersion.current += 1;
+          // Commit the public landing UI before scrolling, including from fixed app layouts.
+          flushSync(() => navigation.reset({ view: 'landing' }));
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        } else if (href === '#get-started') {
           e.preventDefault();
           handleStartJourney();
         } else if (href === '#dashboard') {

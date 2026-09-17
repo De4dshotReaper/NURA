@@ -1,3 +1,4 @@
+import { nuraHomeLinkProps } from '../../navigation/landingNavigation';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../common/Button';
@@ -51,7 +52,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 bg-nuraBg flex flex-col items-center justify-center px-6 py-12 overflow-hidden select-none">
+    <div className="relative min-h-screen supports-[min-height:100dvh]:min-h-dvh z-50 bg-nuraBg flex flex-col items-center justify-center px-6 py-12 overflow-x-clip select-none">
       <AnimatePresence mode="wait">
         {!isLoaded ? (
           <motion.div
@@ -65,7 +66,8 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
             {/* Nura Branding with Soft Blue Glow & Floating Logo */}
             <div className="relative flex flex-col items-center">
               <div className="absolute w-24 h-24 bg-blue-500/20 rounded-full blur-2xl pointer-events-none -top-3" />
-              <motion.div
+              <motion.a
+                {...nuraHomeLinkProps}
                 animate={{ y: [0, -4, 0] }}
                 transition={{
                   duration: 2.4,
@@ -78,7 +80,7 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
                 <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
                   Nura
                 </span>
-              </motion.div>
+              </motion.a>
             </div>
 
             {/* Text Section */}
@@ -113,12 +115,12 @@ export const ConsultationTransition: React.FC<ConsultationTransitionProps> = ({
           >
             {/* Logo & Caption */}
             <div className="flex flex-col items-center space-y-3">
-              <div className="flex items-center gap-3">
+              <a {...nuraHomeLinkProps} className="flex items-center gap-3">
                 <img src="/pwa-192x192.png" alt="" className="h-12 w-12 rounded-2xl object-contain shadow-lg shadow-blue-500/15" />
                 <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
                   Nura
                 </span>
-              </div>
+              </a>
             </div>
 
             {/* 1. Heading fades in while moving upward about 16px */}

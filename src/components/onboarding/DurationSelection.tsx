@@ -1,3 +1,4 @@
+import { nuraHomeLinkProps } from '../../navigation/landingNavigation';
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -40,12 +41,12 @@ export const DurationSelection: React.FC<DurationSelectionProps> = ({ onContinue
         
         {/* Top Section: Small Nura Logo & Uppercase Caption */}
         <div className="flex flex-col items-center space-y-4">
-          <div className="flex items-center gap-3">
+          <a {...nuraHomeLinkProps} className="flex items-center gap-3">
             <img src="/pwa-192x192.png" alt="" className="h-12 w-12 rounded-2xl object-contain shadow-lg shadow-blue-500/15" />
             <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
               Nura
             </span>
-          </div>
+          </a>
           <p 
             className="text-xs font-semibold text-nuraTextSecondary tracking-[0.3em] uppercase transition-all duration-700 delay-100 ease-out"
             style={{

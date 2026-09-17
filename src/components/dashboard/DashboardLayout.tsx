@@ -1,3 +1,4 @@
+import { nuraHomeLinkProps } from '../../navigation/landingNavigation';
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -620,12 +621,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <div>
         {/* Top section: Nura Logo & Subtitle */}
         <div className="mb-10 space-y-1.5">
-          <div className="flex items-center gap-3">
+          <a {...nuraHomeLinkProps} className="flex items-center gap-3">
             <img src="/pwa-192x192.png" alt="" className="h-10 w-10 rounded-2xl object-contain shadow-md shadow-blue-500/15" />
             <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
               Nura
             </span>
-          </div>
+          </a>
           <p className="text-xs font-medium text-nuraTextSecondary/80 tracking-wide pl-0.5">
             {t('nav.patientCompanion')}
           </p>
@@ -671,10 +672,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     >
       {/* MOBILE TOP BAR */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-md border-b border-gray-100 z-30 px-5 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <a {...nuraHomeLinkProps} className="flex items-center gap-2.5">
           <img src="/pwa-192x192.png" alt="" className="h-8 w-8 rounded-xl object-contain shadow-xs" />
           <span className="font-heading font-extrabold text-lg text-nuraText">Nura</span>
-        </div>
+        </a>
         <div className="flex items-center gap-2"><button type="button" onClick={() => void handleEmergency()} disabled={isPreparingEmergency} className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"><Siren className="h-4 w-4" />{t('emergency.button')}</button><button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-2 rounded-xl text-nuraTextSecondary hover:text-nuraText hover:bg-gray-50 transition-colors"

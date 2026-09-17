@@ -1,3 +1,4 @@
+import { nuraHomeLinkProps } from '../../navigation/landingNavigation';
 import React, { useState, useEffect } from 'react';
 import { Activity, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -63,12 +64,12 @@ export const OnboardingStep1: React.FC<OnboardingStep1Props> = ({ onComplete }) 
         
         {/* Small Nura Logo at the top */}
         <div className="flex flex-col items-center space-y-4 animate-fade-in">
-          <div className="flex items-center gap-3">
+          <a {...nuraHomeLinkProps} className="flex items-center gap-3">
             <img src="/pwa-192x192.png" alt="" className="h-12 w-12 rounded-2xl object-contain shadow-lg shadow-blue-500/15" />
             <span className="font-heading font-extrabold text-2xl tracking-tight text-nuraText">
               Nura
             </span>
-          </div>
+          </a>
           <p className="text-xs font-semibold text-nuraTextSecondary tracking-[0.3em] uppercase opacity-70">
             Let's get started.
           </p>

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Brand links retain their existing layout and get a visible keyboard focus. */
+[data-nura-home] {
+  cursor: pointer;
+}
+
+[data-nura-home]:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 4px;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
